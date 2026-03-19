@@ -10,7 +10,7 @@ interface INFT {
     event Minted(address indexed to, uint256 indexed tokenId, uint256 amount);
     event BatchMinted(address indexed to, uint256 fromTokenId, uint256 toTokenId);
     event Revealed(string newBaseURI);
-    event MetadataFrozen();
+    event MetadataFrozenEvent();
     event MinterSet(address indexed minter);
     event Withdrawn(address indexed to, uint256 amount);
 
