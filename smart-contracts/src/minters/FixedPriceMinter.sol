@@ -24,6 +24,9 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
     // collection address → paused state
     mapping(address => bool) private _paused;
 
+    // collection → wallet → minted quantity via this minter
+    mapping(address => mapping(address => uint256)) private _walletMints;
+
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
     // ─────────────────────────────────────────
@@ -68,6 +71,12 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         FixedPriceConfig memory cfg = _configs[collection];
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -82,6 +91,7 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
 
         // tell NFT contract to issue tokens
         INFT(collection).mint(to, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -100,6 +110,12 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         FixedPriceConfig memory cfg = _configs[collection];
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -117,6 +133,7 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
 
         // tell Edition contract to issue tokens
         edition.mint(to, tokenId, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }

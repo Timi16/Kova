@@ -24,6 +24,9 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
     // collection → paused
     mapping(address => bool) private _paused;
 
+    // collection → wallet → minted quantity via this minter
+    mapping(address => mapping(address => uint256)) private _walletMints;
+
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
     // ─────────────────────────────────────────
@@ -74,6 +77,12 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         // enforce time window
         if (block.timestamp < cfg.startTime) revert MintNotStarted();
         if (block.timestamp > cfg.endTime) revert MintEnded();
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -85,6 +94,7 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         );
 
         INFT(collection).mint(to, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -106,6 +116,12 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
 
         if (block.timestamp < cfg.startTime) revert MintNotStarted();
         if (block.timestamp > cfg.endTime) revert MintEnded();
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -120,6 +136,7 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         );
 
         edition.mint(to, tokenId, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }

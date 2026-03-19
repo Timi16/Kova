@@ -27,9 +27,9 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
     // seller → listingIds they created
     mapping(address => uint256[]) private _sellerListings;
 
-    // contractAddress → tokenId → active listingId
-    // tracks if a specific token is already listed
-    mapping(address => mapping(uint256 => uint256)) private _tokenListing;
+    // contractAddress → tokenId → listingIds created for that token
+    // allows multiple sellers for the same ERC1155 tokenId
+    mapping(address => mapping(uint256 => uint256[])) private _tokenListings;
 
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
@@ -87,7 +87,7 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
         });
 
         _sellerListings[msg.sender].push(listingId);
-        _tokenListing[contractAddress][tokenId] = listingId;
+        _tokenListings[contractAddress][tokenId].push(listingId);
 
         emit Listed(
             listingId,
@@ -115,9 +115,6 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
 
         // mark sold before transfer — prevent reentrancy
         listing.status = ListingStatus.Sold;
-
-        // clear token listing tracker
-        delete _tokenListing[listing.contractAddress][listing.tokenId];
 
         // transfer token to buyer
         if (listing.tokenType == TokenType.ERC721) {
@@ -163,8 +160,6 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
         if (listing.status != ListingStatus.Active) revert ListingNotActive();
 
         listing.status = ListingStatus.Cancelled;
-
-        delete _tokenListing[listing.contractAddress][listing.tokenId];
 
         emit ListingCancelled(listingId);
     }
@@ -236,7 +231,7 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
         address contractAddress,
         uint256 tokenId
     ) external view returns (Listing memory) {
-        uint256 listingId = _tokenListing[contractAddress][tokenId];
+        uint256 listingId = _latestActiveTokenListingId(contractAddress, tokenId);
         if (listingId == 0) revert ListingNotFound();
         return _listings[listingId];
     }
@@ -245,8 +240,25 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
         address contractAddress,
         uint256 tokenId
     ) external view returns (bool) {
-        uint256 listingId = _tokenListing[contractAddress][tokenId];
-        if (listingId == 0) return false;
-        return _listings[listingId].status == ListingStatus.Active;
+        return _latestActiveTokenListingId(contractAddress, tokenId) != 0;
+    }
+
+    function _latestActiveTokenListingId(
+        address contractAddress,
+        uint256 tokenId
+    ) internal view returns (uint256) {
+        uint256[] storage listingIds = _tokenListings[contractAddress][tokenId];
+
+        for (uint256 i = listingIds.length; i > 0; ) {
+            unchecked {
+                i--;
+            }
+            uint256 listingId = listingIds[i];
+            if (_listings[listingId].status == ListingStatus.Active) {
+                return listingId;
+            }
+        }
+
+        return 0;
     }
 }

@@ -38,6 +38,7 @@ interface IFeeManager {
     // ─────────────────────────────────────────
     //  VIEWS
     // ─────────────────────────────────────────
+    function mintFlatFee() external view returns (uint256);
     function feeConfig() external view returns (FeeConfig memory);
     function calculateFee(uint256 amount) external view returns (uint256 fee, uint256 remainder);
 }

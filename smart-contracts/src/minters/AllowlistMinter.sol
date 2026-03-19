@@ -25,9 +25,8 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
     // collection → paused
     mapping(address => bool) private _paused;
 
-    // collection → wallet → has claimed
-    // prevents double claiming from allowlist
-    mapping(address => mapping(address => bool)) private _claimed;
+    // collection → wallet → minted quantity via allowlist
+    mapping(address => mapping(address => uint256)) private _walletMints;
 
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
@@ -100,11 +99,13 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
         // verify merkle proof
         if (!_verifyProof(collection, to, proof)) revert InvalidMerkleProof();
 
-        // one claim per wallet
-        if (_claimed[collection][to]) revert WalletMintLimitReached();
-        _claimed[collection][to] = true;
-
         AllowlistConfig memory cfg = _configs[collection];
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -116,6 +117,7 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
         );
 
         INFT(collection).mint(to, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -145,10 +147,13 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
 
         if (!_verifyProof(collection, to, proof)) revert InvalidMerkleProof();
 
-        if (_claimed[collection][to]) revert WalletMintLimitReached();
-        _claimed[collection][to] = true;
-
         AllowlistConfig memory cfg = _configs[collection];
+        if (
+            cfg.maxPerWallet != 0 &&
+            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+        ) {
+            revert WalletMintLimitReached();
+        }
 
         uint256 totalCost = cfg.price * quantity;
         if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
@@ -163,6 +168,7 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
         );
 
         edition.mint(to, tokenId, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }
@@ -210,7 +216,7 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
         address collection,
         address wallet
     ) external view returns (bool) {
-        return _claimed[collection][wallet];
+        return _walletMints[collection][wallet] > 0;
     }
 
     function getConfig(

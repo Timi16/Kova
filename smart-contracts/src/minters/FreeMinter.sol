@@ -24,6 +24,9 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
     // collection → max per wallet
     mapping(address => uint256) private _walletLimits;
 
+    // collection → wallet → minted quantity
+    mapping(address => mapping(address => uint256)) private _walletMints;
+
     // collection → paused
     mapping(address => bool) private _paused;
 
@@ -73,8 +76,16 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
+        uint256 walletLimit = _walletLimits[collection];
+        if (
+            walletLimit != 0 &&
+            _walletMints[collection][to] + quantity > walletLimit
+        ) {
+            revert WalletMintLimitReached();
+        }
+
         // caller only pays flat fee × quantity
-        uint256 flatFee = feeManager.feeConfig().feeBps;
+        uint256 flatFee = feeManager.mintFlatFee();
         uint256 totalFee = flatFee * quantity;
 
         if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
@@ -89,6 +100,7 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         INFT(collection).mint(to, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -107,7 +119,15 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        uint256 flatFee = feeManager.feeConfig().feeBps;
+        uint256 walletLimit = _walletLimits[collection];
+        if (
+            walletLimit != 0 &&
+            _walletMints[collection][to] + quantity > walletLimit
+        ) {
+            revert WalletMintLimitReached();
+        }
+
+        uint256 flatFee = feeManager.mintFlatFee();
         uint256 totalFee = flatFee * quantity;
 
         if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
@@ -121,6 +141,7 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         IEdition(collection).mint(to, tokenId, quantity);
+        _walletMints[collection][to] += quantity;
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }
