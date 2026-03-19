@@ -215,7 +215,7 @@ contract AllowlistMinterTest is Test {
         assertTrue(allowlistMinter.hasClaimed(address(nft), allowed1));
     }
 
-    function test_MinterType() public {
+    function test_MinterType() public view {
         assertEq(uint8(allowlistMinter.minterType()), uint8(MinterType.Allowlist));
     }
 }
