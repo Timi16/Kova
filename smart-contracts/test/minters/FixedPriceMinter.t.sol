@@ -190,11 +190,11 @@ contract FixedPriceMinterTest is Test {
         assertFalse(fixedMinter.isPaused(address(nft)));
     }
 
-    function test_GetMintPrice() public {
+    function test_GetMintPrice() public view {
         assertEq(fixedMinter.getMintPrice(address(nft)), MINT_PRICE);
     }
 
-    function test_MinterType() public {
+    function test_MinterType() public view {
         assertEq(uint8(fixedMinter.minterType()), uint8(MinterType.FixedPrice));
     }
 

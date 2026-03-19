@@ -85,11 +85,12 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         uint256 totalCost = cfg.price * quantity;
-        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         feeManager.collectMintFee{value: msg.value}(
             INFT(collection).config().royaltyReceiver,
-            msg.value,
+            totalDue,
             quantity
         );
 
@@ -124,14 +125,15 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         uint256 totalCost = cfg.price * quantity;
-        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         IEdition edition = IEdition(collection);
         EditionConfig memory edCfg = edition.editionConfig(tokenId);
 
         feeManager.collectMintFee{value: msg.value}(
             edCfg.royaltyReceiver,
-            msg.value,
+            totalDue,
             quantity
         );
 

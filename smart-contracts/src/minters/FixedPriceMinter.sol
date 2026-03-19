@@ -79,13 +79,14 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         uint256 totalCost = cfg.price * quantity;
-        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         // route payment through fee manager
         // fee manager splits → creator + protocol
         feeManager.collectMintFee{value: msg.value}(
             INFT(collection).config().royaltyReceiver,
-            msg.value,
+            totalDue,
             quantity
         );
 
@@ -118,7 +119,8 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         uint256 totalCost = cfg.price * quantity;
-        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         // get creator from edition config
         IEdition edition = IEdition(collection);
@@ -127,7 +129,7 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         // route payment through fee manager
         feeManager.collectMintFee{value: msg.value}(
             edCfg.royaltyReceiver,
-            msg.value,
+            totalDue,
             quantity
         );
 
