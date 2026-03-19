@@ -12,6 +12,20 @@ import "../utils/Types.sol";
 contract Offers is Ownable, ReentrancyGuard {
 
     // ─────────────────────────────────────────
+    //  EVENTS
+    // ─────────────────────────────────────────
+
+    event OfferMade(
+        uint256 indexed offerId,
+        address indexed buyer,
+        address indexed contractAddress,
+        uint256 tokenId,
+        uint256 amount
+    );
+    event OfferAccepted(uint256 indexed offerId, address indexed seller);
+    event OfferCancelled(uint256 indexed offerId);
+
+    // ─────────────────────────────────────────
     //  STATE
     // ─────────────────────────────────────────
 
