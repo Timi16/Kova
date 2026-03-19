@@ -79,10 +79,10 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
     // ─────────────────────────────────────────
 
     function mintNFT(
-        address collection,
-        address to,
-        uint256 quantity
-    ) external payable nonReentrant {
+        address,
+        address,
+        uint256
+    ) external payable {
         // use overloaded version with proof
         revert NotAllowlisted(); // must use mintNFTAllowlist
     }
@@ -127,11 +127,11 @@ contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
     // ─────────────────────────────────────────
 
     function mintEdition(
-        address collection,
-        address to,
-        uint256 tokenId,
-        uint256 quantity
-    ) external payable nonReentrant {
+        address,
+        address,
+        uint256,
+        uint256
+    ) external payable {
         revert NotAllowlisted(); // must use mintEditionAllowlist
     }
 
