@@ -170,6 +170,28 @@ contract Marketplace is IMarketplace, Ownable, ReentrancyGuard {
     }
 
     // ─────────────────────────────────────────
+    //  OFFERS (handled by Offers.sol)
+    // ─────────────────────────────────────────
+
+    function makeOffer(
+        address,
+        uint256,
+        TokenType,
+        uint256,
+        uint256
+    ) external payable {
+        revert OfferNotFound();
+    }
+
+    function acceptOffer(uint256) external pure {
+        revert OfferNotFound();
+    }
+
+    function cancelOffer(uint256) external pure {
+        revert OfferNotFound();
+    }
+
+    // ─────────────────────────────────────────
     //  ADMIN
     // ─────────────────────────────────────────
 
