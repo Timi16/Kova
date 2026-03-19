@@ -73,29 +73,33 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         TimedConfig memory cfg = _configs[collection];
+        uint256 walletMinted = _walletMints[collection][to];
 
         // enforce time window
         if (block.timestamp < cfg.startTime) revert MintNotStarted();
         if (block.timestamp > cfg.endTime) revert MintEnded();
         if (
             cfg.maxPerWallet != 0 &&
-            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+            walletMinted + quantity > cfg.maxPerWallet
         ) {
             revert WalletMintLimitReached();
         }
 
+        IFeeManager fm = feeManager;
         uint256 totalCost = cfg.price * quantity;
-        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        uint256 totalDue = totalCost + (fm.mintFlatFee() * quantity);
         if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
-        feeManager.collectMintFee{value: msg.value}(
-            INFT(collection).config().royaltyReceiver,
+        fm.collectMintFee{value: msg.value}(
+            INFT(collection).royaltyReceiver(),
             totalDue,
             quantity
         );
 
         INFT(collection).mint(to, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -114,31 +118,34 @@ contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         TimedConfig memory cfg = _configs[collection];
+        uint256 walletMinted = _walletMints[collection][to];
 
         if (block.timestamp < cfg.startTime) revert MintNotStarted();
         if (block.timestamp > cfg.endTime) revert MintEnded();
         if (
             cfg.maxPerWallet != 0 &&
-            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+            walletMinted + quantity > cfg.maxPerWallet
         ) {
             revert WalletMintLimitReached();
         }
 
+        IFeeManager fm = feeManager;
         uint256 totalCost = cfg.price * quantity;
-        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        uint256 totalDue = totalCost + (fm.mintFlatFee() * quantity);
         if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         IEdition edition = IEdition(collection);
-        EditionConfig memory edCfg = edition.editionConfig(tokenId);
 
-        feeManager.collectMintFee{value: msg.value}(
-            edCfg.royaltyReceiver,
+        fm.collectMintFee{value: msg.value}(
+            edition.royaltyReceiver(tokenId),
             totalDue,
             quantity
         );
 
         edition.mint(to, tokenId, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }

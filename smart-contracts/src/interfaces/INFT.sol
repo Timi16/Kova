@@ -36,6 +36,7 @@ interface INFT {
     //  VIEWS
     // ─────────────────────────────────────────
     function config() external view returns (NFTConfig memory);
+    function royaltyReceiver() external view returns (address);
     function totalMinted() external view returns (uint256);
     function walletMints(address wallet) external view returns (uint256);
     function isMetadataFrozen() external view returns (bool);

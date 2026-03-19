@@ -77,22 +77,24 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         uint256 walletLimit = _walletLimits[collection];
+        uint256 walletMinted = _walletMints[collection][to];
         if (
             walletLimit != 0 &&
-            _walletMints[collection][to] + quantity > walletLimit
+            walletMinted + quantity > walletLimit
         ) {
             revert WalletMintLimitReached();
         }
 
         // caller only pays flat fee × quantity
-        uint256 flatFee = feeManager.mintFlatFee();
+        IFeeManager fm = feeManager;
+        uint256 flatFee = fm.mintFlatFee();
         uint256 totalFee = flatFee * quantity;
 
         if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
 
         // all payment goes to protocol — creator gets 0 from mint
         if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
+            fm.collectMintFee{value: msg.value}(
                 address(0), // no creator payout
                 msg.value,
                 quantity
@@ -100,7 +102,9 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         INFT(collection).mint(to, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -120,20 +124,22 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         uint256 walletLimit = _walletLimits[collection];
+        uint256 walletMinted = _walletMints[collection][to];
         if (
             walletLimit != 0 &&
-            _walletMints[collection][to] + quantity > walletLimit
+            walletMinted + quantity > walletLimit
         ) {
             revert WalletMintLimitReached();
         }
 
-        uint256 flatFee = feeManager.mintFlatFee();
+        IFeeManager fm = feeManager;
+        uint256 flatFee = fm.mintFlatFee();
         uint256 totalFee = flatFee * quantity;
 
         if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
 
         if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
+            fm.collectMintFee{value: msg.value}(
                 address(0),
                 msg.value,
                 quantity
@@ -141,7 +147,9 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         }
 
         IEdition(collection).mint(to, tokenId, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }

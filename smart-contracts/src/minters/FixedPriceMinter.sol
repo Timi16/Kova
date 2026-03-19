@@ -71,28 +71,32 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         FixedPriceConfig memory cfg = _configs[collection];
+        uint256 walletMinted = _walletMints[collection][to];
         if (
             cfg.maxPerWallet != 0 &&
-            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+            walletMinted + quantity > cfg.maxPerWallet
         ) {
             revert WalletMintLimitReached();
         }
 
+        IFeeManager fm = feeManager;
         uint256 totalCost = cfg.price * quantity;
-        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        uint256 totalDue = totalCost + (fm.mintFlatFee() * quantity);
         if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         // route payment through fee manager
         // fee manager splits → creator + protocol
-        feeManager.collectMintFee{value: msg.value}(
-            INFT(collection).config().royaltyReceiver,
+        fm.collectMintFee{value: msg.value}(
+            INFT(collection).royaltyReceiver(),
             totalDue,
             quantity
         );
 
         // tell NFT contract to issue tokens
         INFT(collection).mint(to, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, 0, quantity, msg.value);
     }
@@ -111,31 +115,34 @@ contract FixedPriceMinter is IMinter, Ownable, ReentrancyGuard {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
         FixedPriceConfig memory cfg = _configs[collection];
+        uint256 walletMinted = _walletMints[collection][to];
         if (
             cfg.maxPerWallet != 0 &&
-            _walletMints[collection][to] + quantity > cfg.maxPerWallet
+            walletMinted + quantity > cfg.maxPerWallet
         ) {
             revert WalletMintLimitReached();
         }
 
+        IFeeManager fm = feeManager;
         uint256 totalCost = cfg.price * quantity;
-        uint256 totalDue = totalCost + (feeManager.mintFlatFee() * quantity);
+        uint256 totalDue = totalCost + (fm.mintFlatFee() * quantity);
         if (msg.value != totalDue) revert IncorrectPayment(totalDue, msg.value);
 
         // get creator from edition config
         IEdition edition = IEdition(collection);
-        EditionConfig memory edCfg = edition.editionConfig(tokenId);
 
         // route payment through fee manager
-        feeManager.collectMintFee{value: msg.value}(
-            edCfg.royaltyReceiver,
+        fm.collectMintFee{value: msg.value}(
+            edition.royaltyReceiver(tokenId),
             totalDue,
             quantity
         );
 
         // tell Edition contract to issue tokens
         edition.mint(to, tokenId, quantity);
-        _walletMints[collection][to] += quantity;
+        unchecked {
+            _walletMints[collection][to] = walletMinted + quantity;
+        }
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }

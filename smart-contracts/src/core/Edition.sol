@@ -34,6 +34,9 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
     // tokenId → whether edition is manually closed
     mapping(uint256 => bool) private _closed;
 
+    // tokenId → true if edition was created
+    mapping(uint256 => bool) private _editionExists;
+
     // track all edition token ids created
     uint256[] private _editionIds;
 
@@ -61,7 +64,7 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
     }
 
     modifier editionExists(uint256 tokenId) {
-        if (bytes(_editions[tokenId].uri).length == 0) revert ListingNotFound();
+        if (!_editionExists[tokenId]) revert ListingNotFound();
         _;
     }
 
@@ -81,9 +84,10 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
         if (config_.royaltyBps > 1000) revert FeeTooHigh();
 
         // dont allow overwriting an existing edition
-        if (bytes(_editions[config_.tokenId].uri).length != 0) revert DeploymentFailed();
+        if (_editionExists[config_.tokenId]) revert DeploymentFailed();
 
         _editions[config_.tokenId] = config_;
+        _editionExists[config_.tokenId] = true;
         _editionIds.push(config_.tokenId);
 
         // set per token royalty via ERC2981
@@ -126,7 +130,9 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
     ) external payable onlyMinter whenNotPaused nonReentrant editionExists(tokenId) {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        EditionConfig memory ed = _editions[tokenId];
+        EditionConfig storage ed = _editions[tokenId];
+        uint256 totalMinted_ = _totalMinted[tokenId];
+        uint256 walletMinted = _walletMints[tokenId][to];
 
         // check if edition is manually closed
         if (_closed[tokenId]) revert MintEnded();
@@ -141,14 +147,14 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
 
         // check max supply — 0 means unlimited open edition
         if (ed.maxSupply != 0) {
-            if (_totalMinted[tokenId] + quantity > ed.maxSupply) {
+            if (totalMinted_ + quantity > ed.maxSupply) {
                 revert MaxSupplyReached();
             }
         }
 
         // check wallet limit — 0 means no limit
         if (ed.walletLimit != 0) {
-            if (_walletMints[tokenId][to] + quantity > ed.walletLimit) {
+            if (walletMinted + quantity > ed.walletLimit) {
                 revert WalletMintLimitReached();
             }
         }
@@ -156,8 +162,10 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
         // mint
         _mint(to, tokenId, quantity, "");
 
-        _totalMinted[tokenId] += quantity;
-        _walletMints[tokenId][to] += quantity;
+        unchecked {
+            _totalMinted[tokenId] = totalMinted_ + quantity;
+            _walletMints[tokenId][to] = walletMinted + quantity;
+        }
 
         emit EditionMinted(to, tokenId, quantity);
     }
@@ -196,6 +204,12 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
         return _editions[tokenId];
     }
 
+    function royaltyReceiver(
+        uint256 tokenId
+    ) external view editionExists(tokenId) returns (address) {
+        return _editions[tokenId].royaltyReceiver;
+    }
+
     function totalMinted(
         uint256 tokenId
     ) external view returns (uint256) {
@@ -213,10 +227,9 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
         uint256 tokenId
     ) external view returns (bool) {
         if (_closed[tokenId]) return false;
+        if (!_editionExists[tokenId]) return false;
 
-        EditionConfig memory ed = _editions[tokenId];
-
-        if (bytes(ed.uri).length == 0) return false;
+        EditionConfig storage ed = _editions[tokenId];
 
         if (ed.mintStart != 0 && block.timestamp < ed.mintStart) return false;
         if (ed.mintEnd != 0 && block.timestamp > ed.mintEnd) return false;
@@ -239,7 +252,7 @@ contract Edition is IEdition, ERC1155, ERC2981, Ownable, ReentrancyGuard, Pausab
     function uri(
         uint256 tokenId
     ) public view override returns (string memory) {
-        if (bytes(_editions[tokenId].uri).length == 0) revert ListingNotFound();
+        if (!_editionExists[tokenId]) revert ListingNotFound();
         return _editions[tokenId].uri;
     }
 

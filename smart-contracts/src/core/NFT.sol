@@ -77,41 +77,55 @@ contract NFT is INFT, ERC721, ERC721Royalty, Ownable, ReentrancyGuard, Pausable 
     ) external payable onlyMinter whenNotPaused nonReentrant {
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
+        uint256 totalMinted_ = _totalMinted;
+        uint256 walletMinted = _walletMints[to];
+        uint256 maxSupply = _config.maxSupply;
+        uint256 walletLimit = _config.walletLimit;
+        uint256 mintStart = _config.mintStart;
+        uint256 mintEnd = _config.mintEnd;
+
         // check supply cap — 0 means unlimited
-        if (_config.maxSupply != 0) {
-            if (_totalMinted + quantity > _config.maxSupply) revert MaxSupplyReached();
+        if (maxSupply != 0) {
+            if (totalMinted_ + quantity > maxSupply) revert MaxSupplyReached();
         }
 
         // check wallet limit — 0 means no limit
-        if (_config.walletLimit != 0) {
-            if (_walletMints[to] + quantity > _config.walletLimit) {
+        if (walletLimit != 0) {
+            if (walletMinted + quantity > walletLimit) {
                 revert WalletMintLimitReached();
             }
         }
 
         // check mint window
-        if (_config.mintStart != 0 && block.timestamp < _config.mintStart) {
+        if (mintStart != 0 && block.timestamp < mintStart) {
             revert MintNotStarted();
         }
-        if (_config.mintEnd != 0 && block.timestamp > _config.mintEnd) {
+        if (mintEnd != 0 && block.timestamp > mintEnd) {
             revert MintEnded();
         }
 
         // mint tokens
         uint256 fromTokenId = _nextTokenId;
+        uint256 nextTokenId = fromTokenId;
 
-        for (uint256 i = 0; i < quantity; i++) {
-            _safeMint(to, _nextTokenId);
-            _nextTokenId++;
+        for (uint256 i = 0; i < quantity; ) {
+            _safeMint(to, nextTokenId);
+            unchecked {
+                ++nextTokenId;
+                ++i;
+            }
         }
 
-        _totalMinted += quantity;
-        _walletMints[to] += quantity;
+        _nextTokenId = nextTokenId;
+        unchecked {
+            _totalMinted = totalMinted_ + quantity;
+            _walletMints[to] = walletMinted + quantity;
+        }
 
         if (quantity == 1) {
             emit Minted(to, fromTokenId, 1);
         } else {
-            emit BatchMinted(to, fromTokenId, _nextTokenId - 1);
+            emit BatchMinted(to, fromTokenId, nextTokenId - 1);
         }
     }
 
@@ -182,6 +196,10 @@ contract NFT is INFT, ERC721, ERC721Royalty, Ownable, ReentrancyGuard, Pausable 
 
     function config() external view returns (NFTConfig memory) {
         return _config;
+    }
+
+    function royaltyReceiver() external view returns (address) {
+        return _config.royaltyReceiver;
     }
 
     function totalMinted() external view returns (uint256) {

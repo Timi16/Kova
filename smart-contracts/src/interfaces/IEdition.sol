@@ -34,6 +34,7 @@ interface IEdition {
     //  VIEWS
     // ─────────────────────────────────────────
     function editionConfig(uint256 tokenId) external view returns (EditionConfig memory);
+    function royaltyReceiver(uint256 tokenId) external view returns (address);
     function totalMinted(uint256 tokenId) external view returns (uint256);
     function walletMints(address wallet, uint256 tokenId) external view returns (uint256);
     function isEditionOpen(uint256 tokenId) external view returns (bool);
