@@ -50,7 +50,7 @@ contract NFTTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsConfig() public {
+    function test_DeploymentSetsConfig() public view {
         NFTConfig memory cfg = nft.config();
         assertEq(cfg.name,            "Forge Collection");
         assertEq(cfg.symbol,          "FORGE");
@@ -82,7 +82,7 @@ contract NFTTest is Test {
     //  MINTER ASSIGNMENT
     // ─────────────────────────────────────────
 
-    function test_SetMinter() public {
+    function test_SetMinter() public view {
         assertEq(nft.minter(), minter);
     }
 
@@ -135,14 +135,23 @@ contract NFTTest is Test {
     }
 
     function test_MintRevertsMaxSupplyReached() public {
+        NFTConfig memory cfg = defaultConfig;
+        cfg.maxSupply = 2;
+        cfg.walletLimit = 0; // disable wallet limit so maxSupply is the first failing condition
+
+        vm.prank(owner);
+        NFT supplyLimitedNFT = new NFT(cfg, owner);
+        vm.prank(owner);
+        supplyLimitedNFT.setMinter(minter);
+
         // mint up to max supply
         vm.prank(minter);
-        nft.mint(buyer, 100);
+        supplyLimitedNFT.mint(buyer, 2);
 
         // one more should fail
         vm.prank(minter);
         vm.expectRevert(MaxSupplyReached.selector);
-        nft.mint(buyer, 1);
+        supplyLimitedNFT.mint(buyer, 1);
     }
 
     function test_MintRevertsWalletLimitReached() public {
