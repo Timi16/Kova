@@ -14,7 +14,7 @@ interface IMinter {
         uint256 quantity,
         uint256 totalPaid
     );
-    event MintPaused(address indexed collection);
+    event MintPausedEvent(address indexed collection);
     event MintUnpaused(address indexed collection);
 
     // ─────────────────────────────────────────

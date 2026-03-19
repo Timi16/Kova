@@ -131,7 +131,7 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
 
     function pause(address collection) external onlyOwner {
         _paused[collection] = true;
-        emit MintPaused(collection);
+        emit MintPausedEvent(collection);
     }
 
     function unpause(address collection) external onlyOwner {
