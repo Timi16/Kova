@@ -45,7 +45,7 @@ contract EditionTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsName() public {
+    function test_DeploymentSetsName() public view {
         assertEq(edition.name(), "Forge Editions");
     }
 
@@ -53,7 +53,7 @@ contract EditionTest is Test {
     //  CREATE EDITION
     // ─────────────────────────────────────────
 
-    function test_CreateEdition() public {
+    function test_CreateEdition() public view {
         EditionConfig memory cfg = edition.editionConfig(1);
         assertEq(cfg.uri,       "ipfs://QmEditionHash");
         assertEq(cfg.maxSupply, 500);
@@ -141,12 +141,20 @@ contract EditionTest is Test {
     }
 
     function test_MintRevertsMaxSupplyReached() public {
+        EditionConfig memory cfg = defaultEdition;
+        cfg.tokenId = 2;
+        cfg.maxSupply = 2;
+        cfg.walletLimit = 0; // disable wallet limit so maxSupply is the first failing condition
+
+        vm.prank(owner);
+        edition.createEdition(cfg);
+
         vm.prank(minter);
-        edition.mint(buyer, 1, 500);
+        edition.mint(buyer, 2, 2);
 
         vm.prank(minter);
         vm.expectRevert(MaxSupplyReached.selector);
-        edition.mint(buyer, 1, 1);
+        edition.mint(buyer, 2, 1);
     }
 
     function test_MintRevertsWalletLimitReached() public {
@@ -221,7 +229,7 @@ contract EditionTest is Test {
     //  IS EDITION OPEN
     // ─────────────────────────────────────────
 
-    function test_IsEditionOpen() public {
+    function test_IsEditionOpen() public view {
         assertTrue(edition.isEditionOpen(1));
     }
 
@@ -241,16 +249,24 @@ contract EditionTest is Test {
     }
 
     function test_IsEditionOpenReturnsFalseIfSupplyExhausted() public {
+        EditionConfig memory cfg = defaultEdition;
+        cfg.tokenId = 2;
+        cfg.maxSupply = 2;
+        cfg.walletLimit = 0; // disable wallet limit for supply exhaustion test
+
+        vm.prank(owner);
+        edition.createEdition(cfg);
+
         vm.prank(minter);
-        edition.mint(buyer, 1, 500);
-        assertFalse(edition.isEditionOpen(1));
+        edition.mint(buyer, 2, 2);
+        assertFalse(edition.isEditionOpen(2));
     }
 
     // ─────────────────────────────────────────
     //  URI
     // ─────────────────────────────────────────
 
-    function test_URI() public {
+    function test_URI() public view {
         assertEq(edition.uri(1), "ipfs://QmEditionHash");
     }
 
