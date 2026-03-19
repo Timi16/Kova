@@ -33,7 +33,7 @@ contract FeeManagerTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsConfig() public {
+    function test_DeploymentSetsConfig() public view {
         FeeConfig memory cfg = feeManager.feeConfig();
         assertEq(cfg.treasury, treasury);
         assertEq(cfg.feeBps, FEE_BPS);
@@ -53,20 +53,20 @@ contract FeeManagerTest is Test {
     //  CALCULATE FEE
     // ─────────────────────────────────────────
 
-    function test_CalculateFee() public {
+    function test_CalculateFee() public view {
         // 2.5% of 1 ether = 0.025 ether
         (uint256 fee, uint256 remainder) = feeManager.calculateFee(1 ether);
         assertEq(fee, 0.025 ether);
         assertEq(remainder, 0.975 ether);
     }
 
-    function test_CalculateFeeZeroAmount() public {
+    function test_CalculateFeeZeroAmount() public view {
         (uint256 fee, uint256 remainder) = feeManager.calculateFee(0);
         assertEq(fee, 0);
         assertEq(remainder, 0);
     }
 
-    function test_CalculateFeeSmallAmount() public {
+    function test_CalculateFeeSmallAmount() public view {
         // 2.5% of 100 wei = 2 wei (rounds down)
         (uint256 fee, uint256 remainder) = feeManager.calculateFee(100);
         assertEq(fee, 2);
@@ -74,7 +74,7 @@ contract FeeManagerTest is Test {
     }
 
     // fuzz test — fee + remainder always equals amount
-    function testFuzz_CalculateFeeAlwaysAddsUp(uint256 amount) public {
+    function testFuzz_CalculateFeeAlwaysAddsUp(uint256 amount) public view {
         vm.assume(amount < 1_000_000 ether);
         (uint256 fee, uint256 remainder) = feeManager.calculateFee(amount);
         assertEq(fee + remainder, amount);
@@ -111,7 +111,6 @@ contract FeeManagerTest is Test {
     }
 
     function test_CollectMintFeeRevertsWrongValue() public {
-        uint256 flatFee = feeManager.mintFlatFee();
         uint256 totalPaid = 0.01 ether;
 
         vm.deal(buyer, 1 ether);
