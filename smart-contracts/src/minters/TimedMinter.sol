@@ -10,7 +10,7 @@ import "../interfaces/IFeeManager.sol";
 import "../utils/Errors.sol";
 import "../utils/Types.sol";
 
-contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
+contract TimedMinter is IMinter, Ownable, ReentrancyGuard {
 
     // ─────────────────────────────────────────
     //  STATE
@@ -18,11 +18,8 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
 
     IFeeManager public feeManager;
 
-    // collection → registered
-    mapping(address => bool) private _registered;
-
-    // collection → max per wallet
-    mapping(address => uint256) private _walletLimits;
+    // collection → timed config
+    mapping(address => TimedConfig) private _configs;
 
     // collection → paused
     mapping(address => bool) private _paused;
@@ -42,26 +39,26 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
 
     function registerNFT(
         address collection,
-        uint256 walletLimit
+        TimedConfig calldata config_
     ) external onlyOwner {
         if (collection == address(0)) revert ZeroAddress();
-        _registered[collection] = true;
-        _walletLimits[collection] = walletLimit;
+        if (config_.endTime <= config_.startTime) revert InvalidMintAmount(0);
+        _configs[collection] = config_;
     }
 
     function registerEdition(
         address collection,
-        uint256 walletLimit
+        TimedConfig calldata config_
     ) external onlyOwner {
         if (collection == address(0)) revert ZeroAddress();
-        _registered[collection] = true;
-        _walletLimits[collection] = walletLimit;
+        if (config_.endTime <= config_.startTime) revert InvalidMintAmount(0);
+        _configs[collection] = config_;
     }
 
     // ─────────────────────────────────────────
     //  MINT NFT  (ERC721)
-    //  caller only pays the flat protocol fee
-    //  creator gets nothing from mint — free drop
+    //  enforces time window at minter level
+    //  on top of any window set in the NFT contract
     // ─────────────────────────────────────────
 
     function mintNFT(
@@ -69,24 +66,23 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         address to,
         uint256 quantity
     ) external payable nonReentrant {
-        if (!_registered[collection]) revert NotAuthorizedMinter();
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        // caller only pays flat fee × quantity
-        uint256 flatFee = feeManager.feeConfig().feeBps;
-        uint256 totalFee = flatFee * quantity;
+        TimedConfig memory cfg = _configs[collection];
 
-        if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
+        // enforce time window
+        if (block.timestamp < cfg.startTime) revert MintNotStarted();
+        if (block.timestamp > cfg.endTime) revert MintEnded();
 
-        // all payment goes to protocol — creator gets 0 from mint
-        if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
-                address(0), // no creator payout
-                msg.value,
-                quantity
-            );
-        }
+        uint256 totalCost = cfg.price * quantity;
+        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+
+        feeManager.collectMintFee{value: msg.value}(
+            INFT(collection).config().royaltyReceiver,
+            msg.value,
+            quantity
+        );
 
         INFT(collection).mint(to, quantity);
 
@@ -103,24 +99,27 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         uint256 tokenId,
         uint256 quantity
     ) external payable nonReentrant {
-        if (!_registered[collection]) revert NotAuthorizedMinter();
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        uint256 flatFee = feeManager.feeConfig().feeBps;
-        uint256 totalFee = flatFee * quantity;
+        TimedConfig memory cfg = _configs[collection];
 
-        if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
+        if (block.timestamp < cfg.startTime) revert MintNotStarted();
+        if (block.timestamp > cfg.endTime) revert MintEnded();
 
-        if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
-                address(0),
-                msg.value,
-                quantity
-            );
-        }
+        uint256 totalCost = cfg.price * quantity;
+        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
 
-        IEdition(collection).mint(to, tokenId, quantity);
+        IEdition edition = IEdition(collection);
+        EditionConfig memory edCfg = edition.editionConfig(tokenId);
+
+        feeManager.collectMintFee{value: msg.value}(
+            edCfg.royaltyReceiver,
+            msg.value,
+            quantity
+        );
+
+        edition.mint(to, tokenId, quantity);
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }
@@ -139,6 +138,16 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         emit MintUnpaused(collection);
     }
 
+    function updateWindow(
+        address collection,
+        uint256 newStart,
+        uint256 newEnd
+    ) external onlyOwner {
+        if (newEnd <= newStart) revert InvalidMintAmount(0);
+        _configs[collection].startTime = newStart;
+        _configs[collection].endTime = newEnd;
+    }
+
     function updateFeeManager(address feeManager_) external onlyOwner {
         if (feeManager_ == address(0)) revert ZeroAddress();
         feeManager = IFeeManager(feeManager_);
@@ -148,15 +157,26 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
     //  VIEWS
     // ─────────────────────────────────────────
 
-    function getMintPrice(address) external pure returns (uint256) {
-        return 0; // free
+    function getMintPrice(address collection) external view returns (uint256) {
+        return _configs[collection].price;
     }
 
     function isPaused(address collection) external view returns (bool) {
         return _paused[collection];
     }
 
+    function isWindowOpen(address collection) external view returns (bool) {
+        TimedConfig memory cfg = _configs[collection];
+        return block.timestamp >= cfg.startTime && block.timestamp <= cfg.endTime;
+    }
+
+    function getConfig(
+        address collection
+    ) external view returns (TimedConfig memory) {
+        return _configs[collection];
+    }
+
     function minterType() external pure returns (MinterType) {
-        return MinterType.Free;
+        return MinterType.Timed;
     }
 }

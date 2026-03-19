@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/INFT.sol";
 import "../interfaces/IEdition.sol";
@@ -10,7 +11,7 @@ import "../interfaces/IFeeManager.sol";
 import "../utils/Errors.sol";
 import "../utils/Types.sol";
 
-contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
+contract AllowlistMinter is IMinter, Ownable, ReentrancyGuard {
 
     // ─────────────────────────────────────────
     //  STATE
@@ -18,14 +19,15 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
 
     IFeeManager public feeManager;
 
-    // collection → registered
-    mapping(address => bool) private _registered;
-
-    // collection → max per wallet
-    mapping(address => uint256) private _walletLimits;
+    // collection → allowlist config
+    mapping(address => AllowlistConfig) private _configs;
 
     // collection → paused
     mapping(address => bool) private _paused;
+
+    // collection → wallet → has claimed
+    // prevents double claiming from allowlist
+    mapping(address => mapping(address => bool)) private _claimed;
 
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
@@ -42,26 +44,39 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
 
     function registerNFT(
         address collection,
-        uint256 walletLimit
+        AllowlistConfig calldata config_
     ) external onlyOwner {
         if (collection == address(0)) revert ZeroAddress();
-        _registered[collection] = true;
-        _walletLimits[collection] = walletLimit;
+        if (config_.merkleRoot == bytes32(0)) revert InvalidMerkleProof();
+        _configs[collection] = config_;
     }
 
     function registerEdition(
         address collection,
-        uint256 walletLimit
+        AllowlistConfig calldata config_
     ) external onlyOwner {
         if (collection == address(0)) revert ZeroAddress();
-        _registered[collection] = true;
-        _walletLimits[collection] = walletLimit;
+        if (config_.merkleRoot == bytes32(0)) revert InvalidMerkleProof();
+        _configs[collection] = config_;
+    }
+
+    // ─────────────────────────────────────────
+    //  VERIFY PROOF
+    //  leaf = keccak256(abi.encodePacked(wallet))
+    //  merkle root is set per collection
+    // ─────────────────────────────────────────
+
+    function _verifyProof(
+        address collection,
+        address wallet,
+        bytes32[] calldata proof
+    ) internal view returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(wallet));
+        return MerkleProof.verify(proof, _configs[collection].merkleRoot, leaf);
     }
 
     // ─────────────────────────────────────────
     //  MINT NFT  (ERC721)
-    //  caller only pays the flat protocol fee
-    //  creator gets nothing from mint — free drop
     // ─────────────────────────────────────────
 
     function mintNFT(
@@ -69,24 +84,36 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         address to,
         uint256 quantity
     ) external payable nonReentrant {
-        if (!_registered[collection]) revert NotAuthorizedMinter();
+        // use overloaded version with proof
+        revert NotAllowlisted(); // must use mintNFTAllowlist
+    }
+
+    function mintNFTAllowlist(
+        address collection,
+        address to,
+        uint256 quantity,
+        bytes32[] calldata proof
+    ) external payable nonReentrant {
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        // caller only pays flat fee × quantity
-        uint256 flatFee = feeManager.feeConfig().feeBps;
-        uint256 totalFee = flatFee * quantity;
+        // verify merkle proof
+        if (!_verifyProof(collection, to, proof)) revert InvalidMerkleProof();
 
-        if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
+        // one claim per wallet
+        if (_claimed[collection][to]) revert WalletMintLimitReached();
+        _claimed[collection][to] = true;
 
-        // all payment goes to protocol — creator gets 0 from mint
-        if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
-                address(0), // no creator payout
-                msg.value,
-                quantity
-            );
-        }
+        AllowlistConfig memory cfg = _configs[collection];
+
+        uint256 totalCost = cfg.price * quantity;
+        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+
+        feeManager.collectMintFee{value: msg.value}(
+            INFT(collection).config().royaltyReceiver,
+            msg.value,
+            quantity
+        );
 
         INFT(collection).mint(to, quantity);
 
@@ -103,24 +130,39 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         uint256 tokenId,
         uint256 quantity
     ) external payable nonReentrant {
-        if (!_registered[collection]) revert NotAuthorizedMinter();
+        revert NotAllowlisted(); // must use mintEditionAllowlist
+    }
+
+    function mintEditionAllowlist(
+        address collection,
+        address to,
+        uint256 tokenId,
+        uint256 quantity,
+        bytes32[] calldata proof
+    ) external payable nonReentrant {
         if (_paused[collection]) revert MintPaused();
         if (quantity == 0) revert InvalidMintAmount(quantity);
 
-        uint256 flatFee = feeManager.feeConfig().feeBps;
-        uint256 totalFee = flatFee * quantity;
+        if (!_verifyProof(collection, to, proof)) revert InvalidMerkleProof();
 
-        if (msg.value != totalFee) revert IncorrectPayment(totalFee, msg.value);
+        if (_claimed[collection][to]) revert WalletMintLimitReached();
+        _claimed[collection][to] = true;
 
-        if (msg.value > 0) {
-            feeManager.collectMintFee{value: msg.value}(
-                address(0),
-                msg.value,
-                quantity
-            );
-        }
+        AllowlistConfig memory cfg = _configs[collection];
 
-        IEdition(collection).mint(to, tokenId, quantity);
+        uint256 totalCost = cfg.price * quantity;
+        if (msg.value != totalCost) revert IncorrectPayment(totalCost, msg.value);
+
+        IEdition edition = IEdition(collection);
+        EditionConfig memory edCfg = edition.editionConfig(tokenId);
+
+        feeManager.collectMintFee{value: msg.value}(
+            edCfg.royaltyReceiver,
+            msg.value,
+            quantity
+        );
+
+        edition.mint(to, tokenId, quantity);
 
         emit MintExecuted(collection, to, tokenId, quantity, msg.value);
     }
@@ -139,6 +181,14 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
         emit MintUnpaused(collection);
     }
 
+    function updateMerkleRoot(
+        address collection,
+        bytes32 newRoot
+    ) external onlyOwner {
+        if (newRoot == bytes32(0)) revert InvalidMerkleProof();
+        _configs[collection].merkleRoot = newRoot;
+    }
+
     function updateFeeManager(address feeManager_) external onlyOwner {
         if (feeManager_ == address(0)) revert ZeroAddress();
         feeManager = IFeeManager(feeManager_);
@@ -148,15 +198,28 @@ contract FreeMinter is IMinter, Ownable, ReentrancyGuard {
     //  VIEWS
     // ─────────────────────────────────────────
 
-    function getMintPrice(address) external pure returns (uint256) {
-        return 0; // free
+    function getMintPrice(address collection) external view returns (uint256) {
+        return _configs[collection].price;
     }
 
     function isPaused(address collection) external view returns (bool) {
         return _paused[collection];
     }
 
+    function hasClaimed(
+        address collection,
+        address wallet
+    ) external view returns (bool) {
+        return _claimed[collection][wallet];
+    }
+
+    function getConfig(
+        address collection
+    ) external view returns (AllowlistConfig memory) {
+        return _configs[collection];
+    }
+
     function minterType() external pure returns (MinterType) {
-        return MinterType.Free;
+        return MinterType.Allowlist;
     }
 }
