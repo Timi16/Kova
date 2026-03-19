@@ -43,10 +43,12 @@ error InvalidMinterType();
 error DeploymentFailed();
 
 // ─────────────────────────────────────────
-//  METADATA ERRORS
+//  METADATA ERRORS & EVENTS
 // ─────────────────────────────────────────
 error MetadataFrozen();
 error EmptyBaseURI();
+
+event MetadataFrozenEvent();
 
 // ─────────────────────────────────────────
 //  FEE ERRORS
@@ -54,3 +56,4 @@ error EmptyBaseURI();
 error FeeTooHigh();
 error FeeTransferFailed();
 error WithdrawFailed();
+
