@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../../src/fees/FeeManager.sol";
+import "../../src/fee/FeeManager.sol";
 import "../../src/marketplace/Marketplace.sol";
 import "../../src/marketplace/Offers.sol";
 import "../../src/minters/FixedPriceMinter.sol";
@@ -34,7 +34,7 @@ contract DeployAll is Script {
         HelperConfig.NetworkConfig memory cfg = helperConfig.getConfig();
 
         console.log("==============================================");
-        console.log("  FORGE PROTOCOL — FULL DEPLOYMENT");
+        console.log("  FORGE PROTOCOL - FULL DEPLOYMENT");
         console.log("==============================================");
         console.log("  Network:  ", block.chainid);
         console.log("  Deployer: ", cfg.deployer);
