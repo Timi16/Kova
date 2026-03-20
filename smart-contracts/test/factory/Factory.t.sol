@@ -51,6 +51,12 @@ contract FactoryTest is Test {
             owner
         );
 
+        // Factory must own minters because it calls registerNFT/registerEdition.
+        fixedPriceMinter.transferOwnership(address(factory));
+        freeMinter.transferOwnership(address(factory));
+        timedMinter.transferOwnership(address(factory));
+        allowlistMinter.transferOwnership(address(factory));
+
         vm.stopPrank();
     }
 

@@ -93,8 +93,8 @@ contract Factory is Ownable, ReentrancyGuard {
     ) external nonReentrant returns (address collection) {
         if (bytes(nftConfig.name).length == 0) revert DeploymentFailed();
 
-        // deploy the NFT contract — creator is owner
-        NFT nft = new NFT(nftConfig, msg.sender);
+        // deploy with factory as temporary owner for initialization
+        NFT nft = new NFT(nftConfig, address(this));
         collection = address(nft);
 
         // wire up the minter based on creator's choice
@@ -106,6 +106,9 @@ contract Factory is Ownable, ReentrancyGuard {
 
         // assign minter to NFT contract
         nft.setMinter(minterAddr);
+
+        // hand ownership to creator after setup
+        nft.transferOwnership(msg.sender);
 
         // store deployment record
         _storeCollection(
@@ -142,8 +145,8 @@ contract Factory is Ownable, ReentrancyGuard {
     ) external nonReentrant returns (address collection) {
         if (bytes(name).length == 0) revert DeploymentFailed();
 
-        // deploy Edition contract — creator is owner
-        Edition edition = new Edition(name, msg.sender);
+        // deploy with factory as temporary owner for initialization
+        Edition edition = new Edition(name, address(this));
         collection = address(edition);
 
         // create the first edition immediately
@@ -158,6 +161,9 @@ contract Factory is Ownable, ReentrancyGuard {
 
         // assign minter to Edition contract
         edition.setMinter(minterAddr);
+
+        // hand ownership to creator after setup
+        edition.transferOwnership(msg.sender);
 
         // store deployment record
         _storeCollection(
