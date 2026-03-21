@@ -33,6 +33,7 @@ function ExtensionNoiseGuard() {
       }
 
       event.preventDefault();
+      event.stopImmediatePropagation();
     };
 
     window.addEventListener("unhandledrejection", onUnhandledRejection);
