@@ -1,0 +1,137 @@
+const FACTORY_ABI = [
+  {
+    type: "function",
+    name: "deployNFTDrop",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "nftConfig",
+        type: "tuple",
+        components: [
+          { name: "name", type: "string" },
+          { name: "symbol", type: "string" },
+          { name: "baseURI", type: "string" },
+          { name: "hiddenURI", type: "string" },
+          { name: "maxSupply", type: "uint256" },
+          { name: "mintPrice", type: "uint256" },
+          { name: "mintStart", type: "uint256" },
+          { name: "mintEnd", type: "uint256" },
+          { name: "walletLimit", type: "uint256" },
+          { name: "royaltyBps", type: "uint96" },
+          { name: "royaltyReceiver", type: "address" },
+          { name: "isRevealed", type: "bool" },
+        ],
+      },
+      { name: "minterType", type: "uint8" },
+      { name: "minterData", type: "bytes" },
+    ],
+    outputs: [{ name: "collection", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "deployEdition",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "name", type: "string" },
+      {
+        name: "firstEdition",
+        type: "tuple",
+        components: [
+          { name: "name", type: "string" },
+          { name: "uri", type: "string" },
+          { name: "tokenId", type: "uint256" },
+          { name: "maxSupply", type: "uint256" },
+          { name: "mintPrice", type: "uint256" },
+          { name: "mintStart", type: "uint256" },
+          { name: "mintEnd", type: "uint256" },
+          { name: "walletLimit", type: "uint256" },
+          { name: "royaltyBps", type: "uint96" },
+          { name: "royaltyReceiver", type: "address" },
+        ],
+      },
+      { name: "minterType", type: "uint8" },
+      { name: "minterData", type: "bytes" },
+    ],
+    outputs: [{ name: "collection", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "getCollection",
+    stateMutability: "view",
+    inputs: [{ name: "collection", type: "address" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "contractAddress", type: "address" },
+          { name: "creator", type: "address" },
+          { name: "minter", type: "address" },
+          { name: "tokenType", type: "uint8" },
+          { name: "minterType", type: "uint8" },
+          { name: "deployedAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getCreatorCollections",
+    stateMutability: "view",
+    inputs: [{ name: "creator", type: "address" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "function",
+    name: "getTotalCollections",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getAllCollections",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "contractAddress", type: "address" },
+          { name: "creator", type: "address" },
+          { name: "minter", type: "address" },
+          { name: "tokenType", type: "uint8" },
+          { name: "minterType", type: "uint8" },
+          { name: "deployedAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "event",
+    name: "NFTDropDeployed",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "collection", type: "address" },
+      { indexed: true, name: "creator", type: "address" },
+      { indexed: true, name: "minter", type: "address" },
+      { indexed: false, name: "minterType", type: "uint8" },
+      { indexed: false, name: "name", type: "string" },
+    ],
+  },
+  {
+    type: "event",
+    name: "EditionDeployed",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "collection", type: "address" },
+      { indexed: true, name: "creator", type: "address" },
+      { indexed: true, name: "minter", type: "address" },
+      { indexed: false, name: "minterType", type: "uint8" },
+      { indexed: false, name: "name", type: "string" },
+    ],
+  },
+] as const;
+
+export default FACTORY_ABI;

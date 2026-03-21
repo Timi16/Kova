@@ -1,0 +1,147 @@
+const OFFERS_ABI = [
+  {
+    type: "function",
+    name: "makeOffer",
+    stateMutability: "payable",
+    inputs: [
+      { name: "contractAddress", type: "address" },
+      { name: "tokenId", type: "uint256" },
+      { name: "tokenType", type: "uint8" },
+      { name: "quantity", type: "uint256" },
+      { name: "expiresAt", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "acceptOffer",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "offerId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "cancelOffer",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "offerId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "sweepExpiredOffer",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "offerId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getOffer",
+    stateMutability: "view",
+    inputs: [{ name: "offerId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "offerId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "buyer", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "expiresAt", type: "uint256" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getOffersByBuyer",
+    stateMutability: "view",
+    inputs: [{ name: "buyer", type: "address" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "offerId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "buyer", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "expiresAt", type: "uint256" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getOffersByToken",
+    stateMutability: "view",
+    inputs: [
+      { name: "contractAddress", type: "address" },
+      { name: "tokenId", type: "uint256" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "offerId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "buyer", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "expiresAt", type: "uint256" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "isOfferActive",
+    stateMutability: "view",
+    inputs: [{ name: "offerId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "event",
+    name: "OfferMade",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "offerId", type: "uint256" },
+      { indexed: true, name: "buyer", type: "address" },
+      { indexed: true, name: "contractAddress", type: "address" },
+      { indexed: false, name: "tokenId", type: "uint256" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "OfferAccepted",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "offerId", type: "uint256" },
+      { indexed: true, name: "seller", type: "address" },
+    ],
+  },
+  {
+    type: "event",
+    name: "OfferCancelled",
+    anonymous: false,
+    inputs: [{ indexed: true, name: "offerId", type: "uint256" }],
+  },
+] as const;
+
+export default OFFERS_ABI;

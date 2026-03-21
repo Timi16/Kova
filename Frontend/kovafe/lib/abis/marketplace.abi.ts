@@ -1,0 +1,150 @@
+const MARKETPLACE_ABI = [
+  {
+    type: "function",
+    name: "list",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "contractAddress", type: "address" },
+      { name: "tokenId", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "tokenType", type: "uint8" },
+      { name: "quantity", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "buy",
+    stateMutability: "payable",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "cancelListing",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getListing",
+    stateMutability: "view",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "listingId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "seller", type: "address" },
+          { name: "price", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getListingsByseller",
+    stateMutability: "view",
+    inputs: [{ name: "seller", type: "address" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "listingId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "seller", type: "address" },
+          { name: "price", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getTokenListing",
+    stateMutability: "view",
+    inputs: [
+      { name: "contractAddress", type: "address" },
+      { name: "tokenId", type: "uint256" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "listingId", type: "uint256" },
+          { name: "contractAddress", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "seller", type: "address" },
+          { name: "price", type: "uint256" },
+          { name: "tokenType", type: "uint8" },
+          { name: "quantity", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "createdAt", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "isListed",
+    stateMutability: "view",
+    inputs: [
+      { name: "contractAddress", type: "address" },
+      { name: "tokenId", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "updateFeeManager",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "feeManager", type: "address" }],
+    outputs: [],
+  },
+  {
+    type: "event",
+    name: "Listed",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "listingId", type: "uint256" },
+      { indexed: true, name: "seller", type: "address" },
+      { indexed: true, name: "contractAddress", type: "address" },
+      { indexed: false, name: "tokenId", type: "uint256" },
+      { indexed: false, name: "price", type: "uint256" },
+      { indexed: false, name: "tokenType", type: "uint8" },
+    ],
+  },
+  {
+    type: "event",
+    name: "Sale",
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "listingId", type: "uint256" },
+      { indexed: true, name: "buyer", type: "address" },
+      { indexed: true, name: "seller", type: "address" },
+      { indexed: false, name: "price", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "ListingCancelled",
+    anonymous: false,
+    inputs: [{ indexed: true, name: "listingId", type: "uint256" }],
+  },
+] as const;
+
+export default MARKETPLACE_ABI;
