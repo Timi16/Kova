@@ -5,9 +5,7 @@ const supabaseUrl = "https://vhhbggxrnsqpdbnvvnuk.supabase.co";
 const supabaseAnonKey = "vhhbggxrnsqpdbnvvnuk";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey) as ReturnType<
-  typeof createClient
->;
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey) as any;
 
 export const supabaseAdmin = createClient<Database>(
   supabaseUrl,
@@ -18,4 +16,4 @@ export const supabaseAdmin = createClient<Database>(
       persistSession: false,
     },
   },
-) as ReturnType<typeof createClient>;
+) as any;

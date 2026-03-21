@@ -51,7 +51,7 @@ export function PostCard({ post }: { post: FeedPost }) {
           minter_type: post.collection.minter_type,
         },
         BigInt(post.edition_token_id ?? 1),
-        1n,
+        BigInt(1),
       );
       return;
     }
@@ -61,7 +61,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         address: post.nft_contract as `0x${string}`,
         minter_type: post.collection.minter_type,
       },
-      1n,
+      BigInt(1),
     );
   }
 

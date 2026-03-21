@@ -38,7 +38,7 @@ export function useRealtime() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "mints" },
-        (payload) => {
+        (payload: any) => {
           void queryClient.invalidateQueries({ queryKey: ["collection"] });
           if (
             pathname?.startsWith("/token/") ||

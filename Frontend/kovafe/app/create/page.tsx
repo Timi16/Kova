@@ -213,7 +213,7 @@ export default function CreatePage() {
               {
                 name: title,
                 uri: `ipfs://${metadata.cid}`,
-                tokenId: 1n,
+                tokenId: BigInt(1),
                 maxSupply,
                 mintPrice: parsedPrice,
                 mintStart,
@@ -235,7 +235,7 @@ export default function CreatePage() {
       const postId = await social.createPost(
         collectionAddress,
         dropType === "limited" ? TokenType.ERC721 : TokenType.ERC1155,
-        dropType === "limited" ? 0n : 1n,
+        dropType === "limited" ? BigInt(0) : BigInt(1),
         title,
         description,
         `ipfs://${contentCID}`,

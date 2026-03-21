@@ -1,15 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Loader2, LogOut, Settings, User } from "lucide-react";
 import { useBalance } from "wagmi";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { injectiveTestnet } from "@/lib/chains";
 import { formatINJ, truncateAddress } from "@/lib/format";
@@ -23,6 +17,8 @@ function avatarGradient(address?: string) {
 
 export function SignInButton() {
   const { login, logout, address, isAuthenticated, isLoading } = useAuth();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const { data: balance } = useBalance({
     address: address as `0x${string}` | undefined,
     chainId: injectiveTestnet.id,
@@ -30,6 +26,17 @@ export function SignInButton() {
       enabled: Boolean(address),
     },
   });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (isLoading) {
     return (
@@ -51,9 +58,11 @@ export function SignInButton() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 transition-default hover:border-primary/50">
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 transition-default hover:border-primary/50"
+      >
           <span
             className="h-8 w-8 rounded-full"
             style={{ backgroundImage: avatarGradient(address) }}
@@ -67,27 +76,38 @@ export function SignInButton() {
             </span>
           </span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem asChild>
-          <Link href={`/profile/${address}`} className="cursor-pointer">
+      </button>
+      {open ? (
+        <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl border border-border bg-surface p-2 shadow-xl">
+          <Link
+            href={`/profile/${address}`}
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center rounded-xl px-3 text-sm text-foreground hover:bg-surface-elevated"
+          >
             <User className="mr-2 h-4 w-4" />
             View Profile
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="cursor-pointer">
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center rounded-xl px-3 text-sm text-foreground hover:bg-surface-elevated"
+          >
             <Settings className="mr-2 h-4 w-4" />
             Settings
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="cursor-pointer">
-          <LogOut className="mr-2 h-4 w-4" />
-          Disconnect
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <div className="my-1 h-px bg-border" />
+          <button
+            onClick={() => {
+              setOpen(false);
+              logout();
+            }}
+            className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm text-foreground hover:bg-surface-elevated"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Disconnect
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }

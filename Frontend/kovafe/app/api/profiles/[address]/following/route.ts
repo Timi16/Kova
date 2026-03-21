@@ -25,10 +25,10 @@ export async function GET(request: NextRequest, context: Context) {
 
     if (error) throw error;
 
-    const profiles = await fetchProfiles((data ?? []).map((item) => item.following));
-    const profileMap = new Map(profiles.map((profile) => [profile.wallet, profile]));
+    const profiles = await fetchProfiles((data ?? []).map((item: any) => item.following));
+    const profileMap = new Map(profiles.map((profile: any) => [profile.wallet, profile]));
 
-    const following = (data ?? []).map((follow) => ({
+    const following = (data ?? []).map((follow: any) => ({
       ...follow,
       profile: profileMap.get(follow.following) ?? null,
     }));

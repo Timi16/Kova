@@ -51,7 +51,7 @@ export async function GET(_: Request, context: Context) {
     if (collectionsResponse.error) throw collectionsResponse.error;
 
     const collectionAddresses = (collectionsResponse.data ?? []).map(
-      (collection) => collection.address,
+      (collection: any) => collection.address,
     );
 
     const mintsResponse = collectionAddresses.length

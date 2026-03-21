@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     if (followError) throw followError;
 
-    const following = (follows ?? []).map((item) => item.following);
+    const following = (follows ?? []).map((item: any) => item.following);
     if (!following.length) {
       return json({ posts: [], nextCursor: null });
     }

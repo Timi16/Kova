@@ -13,7 +13,7 @@ import type {
   ProfileRow,
 } from "@/lib/api-types";
 
-export async function fetchProfiles(wallets: string[]) {
+export async function fetchProfiles(wallets: string[]): Promise<ProfileRow[]> {
   const ids = [...new Set(wallets.map(normalizeAddress).filter(Boolean))];
   if (!ids.length) return [] as ProfileRow[];
 
@@ -23,10 +23,10 @@ export async function fetchProfiles(wallets: string[]) {
     .in("wallet", ids);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as ProfileRow[];
 }
 
-export async function fetchCollections(addresses: string[]) {
+export async function fetchCollections(addresses: string[]): Promise<CollectionRow[]> {
   const ids = [...new Set(addresses.map(normalizeAddress).filter(Boolean))];
   if (!ids.length) return [] as CollectionRow[];
 
@@ -36,10 +36,10 @@ export async function fetchCollections(addresses: string[]) {
     .in("address", ids);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as CollectionRow[];
 }
 
-export async function fetchPostsByContracts(contracts: string[]) {
+export async function fetchPostsByContracts(contracts: string[]): Promise<PostRow[]> {
   const ids = [...new Set(contracts.map(normalizeAddress).filter(Boolean))];
   if (!ids.length) return [] as PostRow[];
 
@@ -49,7 +49,7 @@ export async function fetchPostsByContracts(contracts: string[]) {
     .in("nft_contract", ids);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as PostRow[];
 }
 
 export async function hydratePosts(posts: PostRow[]): Promise<FeedPost[]> {
@@ -65,7 +65,7 @@ export async function hydratePosts(posts: PostRow[]): Promise<FeedPost[]> {
     ...post,
     profile: profileMap.get(post.creator.toLowerCase()) ?? null,
     collection: collectionMap.get(post.nft_contract.toLowerCase()) ?? null,
-  }));
+  })) as FeedPost[];
 }
 
 export async function fetchPost(postId: number) {
@@ -120,7 +120,7 @@ export function nextCursor<T>(items: T[], cursor: number, limit: number) {
 }
 
 export function sumPricePaid(mints: MintRow[]) {
-  return mints.reduce((acc, mint) => acc + BigInt(mint.price_paid), 0n).toString();
+  return mints.reduce((acc, mint) => acc + BigInt(mint.price_paid), BigInt(0)).toString();
 }
 
 export function uniqueOwners(mints: MintRow[]) {

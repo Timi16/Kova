@@ -53,8 +53,7 @@ export function useMint() {
       minterAddress: `0x${string}`,
       collection: `0x${string}`,
       qty: bigint,
-      abi: typeof FIXED_PRICE_MINTER_ABI | typeof FREE_MINTER_ABI | typeof TIMED_MINTER_ABI =
-        FIXED_PRICE_MINTER_ABI,
+      abi: any = FIXED_PRICE_MINTER_ABI,
     ) => {
       if (!publicClient) {
         throw new Error("Missing public client");
@@ -63,7 +62,7 @@ export function useMint() {
       const [price, flatFee] = await Promise.all([
         publicClient.readContract({
           address: minterAddress,
-          abi: abi as typeof FIXED_PRICE_MINTER_ABI,
+          abi,
           functionName: "getMintPrice",
           args: [collection],
         }),
@@ -74,7 +73,7 @@ export function useMint() {
         }),
       ]);
 
-      return price * qty + flatFee * qty;
+      return (price as bigint) * qty + (flatFee as bigint) * qty;
     },
     [publicClient],
   );
