@@ -7,6 +7,14 @@ import { useChainId, usePublicClient, useSwitchChain, useWriteContract } from "w
 import { injectiveTestnet } from "@/lib/chains";
 import { explorerTxUrl, getTxErrorMessage } from "@/lib/tx";
 
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function parseHexChainId(value: unknown) {
+  if (typeof value !== "string") return null;
+  const parsed = Number.parseInt(value, 16);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function useContractWrite() {
   const publicClient = usePublicClient();
   const currentChainId = useChainId();
@@ -16,6 +24,40 @@ export function useContractWrite() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
+
+  const ensureInjectiveChain = useCallback(async () => {
+    if (currentChainId === injectiveTestnet.id) {
+      return;
+    }
+
+    await switchChainAsync({ chainId: injectiveTestnet.id });
+
+    if (typeof window === "undefined" || typeof window.ethereum?.request !== "function") {
+      await sleep(500);
+      return;
+    }
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 10_000) {
+      try {
+        const chainId = parseHexChainId(
+          await window.ethereum.request({ method: "eth_chainId" }),
+        );
+
+        if (chainId === injectiveTestnet.id) {
+          return;
+        }
+      } catch {
+        // Ignore provider polling errors while waiting for the chain switch to settle.
+      }
+
+      await sleep(250);
+    }
+
+    throw new Error(
+      `Please switch your wallet to ${injectiveTestnet.name} (chain ${injectiveTestnet.id}) and try again.`,
+    );
+  }, [currentChainId, switchChainAsync]);
 
   const writeAndWait = useCallback(
     async (
@@ -31,9 +73,7 @@ export function useContractWrite() {
       setError(null);
 
       try {
-        if (currentChainId !== injectiveTestnet.id) {
-          await switchChainAsync({ chainId: injectiveTestnet.id });
-        }
+        await ensureInjectiveChain();
 
         const hash = await writeContractAsync({
           ...config,
@@ -67,7 +107,7 @@ export function useContractWrite() {
         throw nextError;
       }
     },
-    [currentChainId, publicClient, switchChainAsync, writeContractAsync],
+    [ensureInjectiveChain, publicClient, writeContractAsync],
   );
 
   const writeAndWaitForReceipt = useCallback(
@@ -84,9 +124,7 @@ export function useContractWrite() {
       setError(null);
 
       try {
-        if (currentChainId !== injectiveTestnet.id) {
-          await switchChainAsync({ chainId: injectiveTestnet.id });
-        }
+        await ensureInjectiveChain();
 
         const hash = await writeContractAsync({
           ...config,
@@ -120,7 +158,7 @@ export function useContractWrite() {
         throw nextError;
       }
     },
-    [currentChainId, publicClient, switchChainAsync, writeContractAsync],
+    [ensureInjectiveChain, publicClient, writeContractAsync],
   );
 
   return {
