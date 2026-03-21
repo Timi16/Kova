@@ -84,22 +84,40 @@ export function useMint() {
       quantity: bigint,
       proof?: readonly `0x${string}`[],
     ) => {
-      if (!address) {
-        throw new Error("Connect a wallet first");
-      }
+      if (!address) throw new Error("Connect a wallet first");
 
       const minterAddress = getMinterAddress(collection.minter_type);
       const abi = getMinterAbi(collection.minter_type);
-      const totalCost = await getMintCost(minterAddress, collection.address, quantity, abi);
+      const totalCost = await getMintCost(
+        minterAddress,
+        collection.address,
+        quantity,
+        abi,
+      );
 
-      if (collection.minter_type === "Allowlist") {
-        return contractWrite.writeAndWait({
-          address: minterAddress,
-          abi: ALLOWLIST_MINTER_ABI,
-          functionName: "mintNFTAllowlist",
-          args: [collection.address, address as `0x${string}`, quantity, proof ?? []],
-          value: totalCost,
-        });
+      console.log("Minting:", {
+        minterAddress,
+        collection: collection.address,
+        minter_type: collection.minter_type,
+        quantity: quantity.toString(),
+        totalCost: totalCost.toString(),
+      });
+
+      // Simulate first to get revert reason
+      if (publicClient) {
+        try {
+          await publicClient.simulateContract({
+            address: minterAddress,
+            abi,
+            functionName: "mintNFT",
+            args: [collection.address, address as `0x${string}`, quantity],
+            value: totalCost,
+            account: address as `0x${string}`,
+          });
+        } catch (err) {
+          console.error("Mint simulation failed:", err);
+          throw err;
+        }
       }
 
       return contractWrite.writeAndWait({
@@ -110,7 +128,7 @@ export function useMint() {
         value: totalCost,
       });
     },
-    [address, contractWrite, getMintCost],
+    [address, contractWrite, getMintCost, publicClient],
   );
 
   const mintEdition = useCallback(
@@ -126,7 +144,12 @@ export function useMint() {
 
       const minterAddress = getMinterAddress(collection.minter_type);
       const abi = getMinterAbi(collection.minter_type);
-      const totalCost = await getMintCost(minterAddress, collection.address, quantity, abi);
+      const totalCost = await getMintCost(
+        minterAddress,
+        collection.address,
+        quantity,
+        abi,
+      );
 
       if (collection.minter_type === "Allowlist") {
         return contractWrite.writeAndWait({

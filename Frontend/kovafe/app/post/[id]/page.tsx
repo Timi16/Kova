@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Heart, MessageCircle, Minus, Plus, Share2 } from "lucide-react";
+import {
+  Heart,
+  Loader2,
+  MessageCircle,
+  Minus,
+  Plus,
+  Share2,
+} from "lucide-react";
 import { AddressChip } from "@/features/user/AddressChip";
 import { FollowButton } from "@/features/user/FollowButton";
 import { EmptyState } from "@/features/common/EmptyState";
@@ -24,9 +31,12 @@ export default function PostDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [comment, setComment] = useState("");
   const [liked, setLiked] = useState(false);
+  const [minting, setMinting] = useState(false);
+  const [mintError, setMintError] = useState<string | null>(null);
 
   const post = postQuery.data;
-  const comments = commentsQuery.data?.pages.flatMap((page) => page.comments) ?? [];
+  const comments =
+    commentsQuery.data?.pages.flatMap((page) => page.comments) ?? [];
   const mediaUrl = pinataGatewayUrl(post?.content_uri);
   const totalCost = useMemo(() => {
     if (!post?.collection?.mint_price) return "FREE + gas";
@@ -34,7 +44,11 @@ export default function PostDetailPage() {
   }, [post?.collection?.mint_price, quantity]);
 
   if (postQuery.isLoading) {
-    return <div className="px-4 py-10 text-sm text-muted-foreground">Loading post...</div>;
+    return (
+      <div className="px-4 py-10 text-sm text-muted-foreground">
+        Loading post...
+      </div>
+    );
   }
 
   if (!post) {
@@ -74,24 +88,36 @@ export default function PostDetailPage() {
       return;
     }
 
-    if (!postData.collection) return;
-    if (postData.token_type === "ERC1155") {
-      await mint.mintEdition(
-        {
-          address: postData.nft_contract as `0x${string}`,
-          minter_type: postData.collection.minter_type,
-        },
-        BigInt(postData.edition_token_id ?? 1),
-        BigInt(quantity),
+    setMintError(null);
+    setMinting(true);
+
+    try {
+      const minterType = postData.collection?.minter_type ?? "FixedPrice";
+
+      if (postData.token_type === "ERC1155") {
+        await mint.mintEdition(
+          {
+            address: postData.nft_contract as `0x${string}`,
+            minter_type: minterType,
+          },
+          BigInt(postData.edition_token_id ?? 1),
+          BigInt(quantity),
+        );
+      } else {
+        await mint.mintNFT(
+          {
+            address: postData.nft_contract as `0x${string}`,
+            minter_type: minterType,
+          },
+          BigInt(quantity),
+        );
+      }
+    } catch (err) {
+      setMintError(
+        err instanceof Error ? err.message : "Mint failed — please try again.",
       );
-    } else {
-      await mint.mintNFT(
-        {
-          address: postData.nft_contract as `0x${string}`,
-          minter_type: postData.collection.minter_type,
-        },
-        BigInt(quantity),
-      );
+    } finally {
+      setMinting(false);
     }
   }
 
@@ -100,7 +126,6 @@ export default function PostDetailPage() {
       login();
       return;
     }
-
     if (!comment.trim()) return;
     await social.addComment(BigInt(postData.post_id), comment);
     setComment("");
@@ -112,16 +137,34 @@ export default function PostDetailPage() {
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="lg:w-[55%]">
           <div className="aspect-square overflow-hidden rounded-xl bg-surface">
-            {post.media_type === "video" ? (
-              <video src={mediaUrl} className="h-full w-full object-cover" controls />
+            {!mediaUrl ? (
+              <div className="flex h-full items-center justify-center bg-surface-elevated">
+                <span className="text-xs text-muted-foreground">No media</span>
+              </div>
+            ) : post.media_type === "video" ? (
+              <video
+                src={mediaUrl}
+                className="h-full w-full object-cover"
+                controls
+              />
             ) : (
-              <img src={mediaUrl} alt={post.title} className="h-full w-full object-cover" />
+              <img
+                src={mediaUrl}
+                alt={post.title}
+                className="h-full w-full object-cover"
+              />
             )}
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={() => void handleLike()} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <Heart className={`h-5 w-5 ${(liked || postData.has_liked) ? "fill-destructive text-destructive" : ""}`} />
-              {postData.like_count_value + (liked && !postData.has_liked ? 1 : 0)}
+            <button
+              onClick={() => void handleLike()}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <Heart
+                className={`h-5 w-5 ${liked || postData.has_liked ? "fill-destructive text-destructive" : ""}`}
+              />
+              {postData.like_count_value +
+                (liked && !postData.has_liked ? 1 : 0)}
             </button>
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
               <MessageCircle className="h-5 w-5" />
@@ -136,7 +179,10 @@ export default function PostDetailPage() {
         <div className="lg:w-[45%]">
           <div className="space-y-6 lg:sticky lg:top-[76px]">
             <div className="flex items-center justify-between">
-              <Link href={`/profile/${postData.creator}`} className="flex items-center gap-3">
+              <Link
+                href={`/profile/${postData.creator}`}
+                className="flex items-center gap-3"
+              >
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-400" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">
@@ -149,21 +195,34 @@ export default function PostDetailPage() {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">{postData.title}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {postData.title}
+              </h1>
               {postData.description ? (
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{postData.description}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {postData.description}
+                </p>
               ) : null}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               {[
-                ["PRICE", postData.collection?.mint_price === "0" ? "FREE" : formatINJ(postData.collection?.mint_price)],
+                [
+                  "PRICE",
+                  postData.collection?.mint_price === "0"
+                    ? "FREE"
+                    : formatINJ(postData.collection?.mint_price),
+                ],
                 ["MINTED", String(postData.collection?.total_minted ?? 0)],
                 ["MAX", String(postData.collection?.max_supply ?? "∞")],
               ].map(([label, value]) => (
                 <div key={label} className="card-surface p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {label}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -172,26 +231,58 @@ export default function PostDetailPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Quantity</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated">
+                  <button
+                    onClick={() =>
+                      setQuantity((current) => Math.max(1, current - 1))
+                    }
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated"
+                  >
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-8 text-center font-mono text-sm font-semibold text-foreground">{quantity}</span>
-                  <button onClick={() => setQuantity((current) => current + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated">
+                  <span className="w-8 text-center font-mono text-sm font-semibold text-foreground">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((current) => current + 1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-elevated"
+                  >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total</span>
-                <span className="font-mono font-semibold text-foreground">{totalCost}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {totalCost}
+                </span>
               </div>
-              <button onClick={() => void handleMint()} className="min-h-11 w-full rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">
-                Mint Now
+
+              {mintError ? (
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {mintError}
+                </p>
+              ) : null}
+
+              {!postData.collection ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  Collection indexing in progress...
+                </p>
+              ) : null}
+
+              <button
+                onClick={() => void handleMint()}
+                disabled={minting}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
+              >
+                {minting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {minting ? "Minting..." : "Mint Now"}
               </button>
             </div>
 
             <div className="card-surface space-y-4 p-4">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Comments</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                Comments
+              </h2>
               <div className="flex gap-2">
                 <input
                   value={comment}
@@ -199,7 +290,10 @@ export default function PostDetailPage() {
                   placeholder="Add a comment..."
                   className="min-h-11 flex-1 rounded-lg border border-border bg-surface-elevated px-4 text-sm text-foreground outline-none"
                 />
-                <button onClick={() => void handleComment()} className="min-h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                <button
+                  onClick={() => void handleComment()}
+                  className="min-h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                >
                   Post
                 </button>
               </div>
@@ -211,7 +305,9 @@ export default function PostDetailPage() {
                       <p className="text-xs font-mono text-muted-foreground">
                         {item.profile?.username ?? item.commenter}
                       </p>
-                      <p className="mt-0.5 text-sm text-foreground">{item.content}</p>
+                      <p className="mt-0.5 text-sm text-foreground">
+                        {item.content}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -220,13 +316,21 @@ export default function PostDetailPage() {
 
             <div className="space-y-3 text-sm">
               {[
-                { label: "Contract", value: <AddressChip address={postData.nft_contract} /> },
+                {
+                  label: "Contract",
+                  value: <AddressChip address={postData.nft_contract} />,
+                },
                 { label: "Token Standard", value: postData.token_type },
                 { label: "Chain", value: "Injective inEVM" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between border-b border-border-subtle py-2">
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between border-b border-border-subtle py-2"
+                >
                   <span className="text-muted-foreground">{item.label}</span>
-                  <span className="font-mono text-foreground">{item.value}</span>
+                  <span className="font-mono text-foreground">
+                    {item.value}
+                  </span>
                 </div>
               ))}
             </div>

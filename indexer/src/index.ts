@@ -85,20 +85,20 @@ async function incrementPostValue(postId: number, field: "comment_count" | "like
 async function insertActivity(data: Record<string, unknown>) {
   await supabaseAdmin.from("activity").insert(data);
 }
-
 ponder.on("Factory:NFTDropDeployed", async ({ event }) => {
   const timestamp = timestampFromEvent(event);
 
-  await supabaseAdmin.from("collections").insert({
+  const { error } = await supabaseAdmin.from("collections").insert({
     address: normalizeAddress(event.args.collection),
     creator: normalizeAddress(event.args.creator),
     name: event.args.name,
     token_type: "ERC721",
     minter_type: getMinterTypeName(event.args.minterType),
-    minter_address: normalizeAddress(event.args.minter),
     deployed_at: timestamp,
     tx_hash: event.transaction.hash,
   });
+
+  if (error) console.error("NFTDropDeployed insert error:", error);
 
   await insertActivity({
     event_type: "deploy",
@@ -112,16 +112,17 @@ ponder.on("Factory:NFTDropDeployed", async ({ event }) => {
 ponder.on("Factory:EditionDeployed", async ({ event }) => {
   const timestamp = timestampFromEvent(event);
 
-  await supabaseAdmin.from("collections").insert({
+  const { error } = await supabaseAdmin.from("collections").insert({
     address: normalizeAddress(event.args.collection),
     creator: normalizeAddress(event.args.creator),
     name: event.args.name,
     token_type: "ERC1155",
     minter_type: getMinterTypeName(event.args.minterType),
-    minter_address: normalizeAddress(event.args.minter),
     deployed_at: timestamp,
     tx_hash: event.transaction.hash,
   });
+
+  if (error) console.error("EditionDeployed insert error:", error);
 
   await insertActivity({
     event_type: "deploy",
@@ -131,7 +132,6 @@ ponder.on("Factory:EditionDeployed", async ({ event }) => {
     created_at: timestamp,
   });
 });
-
 ponder.on("FixedPriceMinter:MintExecuted", async ({ event }) => {
   const timestamp = timestampFromEvent(event);
 
