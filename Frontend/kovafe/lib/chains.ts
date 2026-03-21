@@ -1,5 +1,9 @@
 import type { Chain } from "viem";
 
+export const injectiveRpcUrl =
+  process.env.NEXT_PUBLIC_INJECTIVE_RPC ??
+  "https://injectiveevm-testnet-rpc.polkachu.com";
+
 export const injectiveTestnet = {
   id: 1439,
   name: "Injective Testnet",
@@ -10,7 +14,10 @@ export const injectiveTestnet = {
   },
   rpcUrls: {
     default: {
-      http: ["https://injectiveevm-testnet-rpc.polkachu.com"],
+      http: [injectiveRpcUrl],
+    },
+    public: {
+      http: [injectiveRpcUrl],
     },
   },
   blockExplorers: {

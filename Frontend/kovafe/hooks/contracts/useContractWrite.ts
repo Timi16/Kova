@@ -3,11 +3,14 @@
 import { useCallback, useState } from "react";
 import type { WriteContractParameters } from "wagmi/actions";
 import { toast } from "sonner";
-import { usePublicClient, useWriteContract } from "wagmi";
+import { useChainId, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { injectiveTestnet } from "@/lib/chains";
 import { explorerTxUrl, getTxErrorMessage } from "@/lib/tx";
 
 export function useContractWrite() {
   const publicClient = usePublicClient();
+  const currentChainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -28,7 +31,14 @@ export function useContractWrite() {
       setError(null);
 
       try {
-        const hash = await writeContractAsync(config);
+        if (currentChainId !== injectiveTestnet.id) {
+          await switchChainAsync({ chainId: injectiveTestnet.id });
+        }
+
+        const hash = await writeContractAsync({
+          ...config,
+          chainId: injectiveTestnet.id,
+        });
         setTxHash(hash);
 
         const loadingId = toast.loading(pendingMessage, {
@@ -57,7 +67,7 @@ export function useContractWrite() {
         throw nextError;
       }
     },
-    [publicClient, writeContractAsync],
+    [currentChainId, publicClient, switchChainAsync, writeContractAsync],
   );
 
   const writeAndWaitForReceipt = useCallback(
@@ -74,7 +84,14 @@ export function useContractWrite() {
       setError(null);
 
       try {
-        const hash = await writeContractAsync(config);
+        if (currentChainId !== injectiveTestnet.id) {
+          await switchChainAsync({ chainId: injectiveTestnet.id });
+        }
+
+        const hash = await writeContractAsync({
+          ...config,
+          chainId: injectiveTestnet.id,
+        });
         setTxHash(hash);
 
         const loadingId = toast.loading(pendingMessage, {
@@ -103,7 +120,7 @@ export function useContractWrite() {
         throw nextError;
       }
     },
-    [publicClient, writeContractAsync],
+    [currentChainId, publicClient, switchChainAsync, writeContractAsync],
   );
 
   return {
