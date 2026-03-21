@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "ponder dev",
     "build": "ponder codegen",
-    "start": "ponder start"
+    "start": "ponder start",
+    "postinstall": "node ./scripts/patch-ponder.mjs"
   },
   "dependencies": {
     "@ponder/core": "^0.7.17",

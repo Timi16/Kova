@@ -1,10 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { ponder } from "@/generated";
 
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseServiceRoleKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for the indexer.");
+}
+
 const supabaseAdmin = createClient(
   "https://vhhbggxrnsqpdbnvvnuk.supabase.co",
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaGJnZ3hybnNxcGRibnZ2bnVrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDEwMDYzNSwiZXhwIjoyMDg5Njc2NjM1fQ.2P-oyMUH7jmQof8VnqDk2nWY-_g2CWZ4Y7u0gLLpQ0I",
+  supabaseServiceRoleKey,
   {
     auth: {
       autoRefreshToken: false,
