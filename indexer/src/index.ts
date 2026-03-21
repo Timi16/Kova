@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { ponder } from "ponder:registry";
+import { ponder } from "@/generated";
 
 const supabaseAdmin = createClient(
   "https://vhhbggxrnsqpdbnvvnuk.supabase.co",

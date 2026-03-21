@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ponder dev",
-    "build": "ponder build",
+    "build": "ponder codegen",
     "start": "ponder start"
   },
   "dependencies": {

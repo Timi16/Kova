@@ -1,4 +1,5 @@
-import { createConfig, http } from "@ponder/core";
+import { createConfig } from "@ponder/core";
+import { http } from "viem";
 import FACTORY_ABI from "../Frontend/kovafe/lib/abis/factory.abi";
 import FIXED_PRICE_MINTER_ABI from "../Frontend/kovafe/lib/abis/fixedPriceMinter.abi";
 import MARKETPLACE_ABI from "../Frontend/kovafe/lib/abis/marketplace.abi";
