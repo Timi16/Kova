@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { Heart, MessageCircle, Share2, ArrowUpRight } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import type { Post } from "@/data/mockData";
-import { formatINJ, formatCount } from "@/data/mockData";
+import { formatINJ, formatCount, formatTimeAgo } from "@/data/mockData";
 import { CountdownTimer } from "@/features/common/CountdownTimer";
 import { AddressChip } from "@/features/user/AddressChip";
 import { useStore } from "@/store/useStore";
@@ -42,7 +41,7 @@ export function PostCard({ post }: { post: Post }) {
             <AddressChip address={post.creator.address} />
           </div>
           <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+            {formatTimeAgo(post.createdAt, true)}
           </p>
         </div>
       </div>

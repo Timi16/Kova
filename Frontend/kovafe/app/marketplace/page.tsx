@@ -1,9 +1,9 @@
 'use client';
 
+import Link from "next/link";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Grid3x3, List, ArrowUpRight } from "lucide-react";
-import { posts, creators, formatINJ, formatCount, truncateAddress, listings } from "@/data/mockData";
+import { formatINJ, truncateAddress, listings } from "@/data/mockData";
 
 export default function MarketplacePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -54,7 +54,7 @@ export default function MarketplacePage() {
         {listings.map((listing) => (
           <Link
             key={listing.id}
-            to={`/post/${listing.post.id}`}
+            href={`/post/${listing.post.id}`}
             className="card-surface overflow-hidden group hover:scale-[1.01] transition-transform duration-150"
           >
             <div className="aspect-square overflow-hidden">

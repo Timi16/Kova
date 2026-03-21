@@ -1,7 +1,7 @@
 'use client';
 
+import Link from "next/link";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { posts, formatINJ, formatCount } from "@/data/mockData";
 import { ArrowUpRight } from "lucide-react";
 
@@ -40,7 +40,7 @@ export default function DropsPage() {
         {filtered.map((post) => {
           const progress = post.supply > 0 ? (post.mintCount / post.supply) * 100 : 0;
           return (
-            <Link key={post.id} to={`/post/${post.id}`} className="card-surface overflow-hidden group">
+            <Link key={post.id} href={`/post/${post.id}`} className="card-surface overflow-hidden group">
               <div className="aspect-square overflow-hidden">
                 <img src={post.media} alt={post.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
               </div>

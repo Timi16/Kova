@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { Zap, TrendingUp, User, ArrowUpRight, MessageCircle, Heart, Check } from "lucide-react";
 import { notifications } from "@/data/mockData";
-import { truncateAddress } from "@/data/mockData";
-import { formatDistanceToNow } from "date-fns";
-import { Link } from "react-router-dom";
+import { truncateAddress, formatTimeAgo } from "@/data/mockData";
 
 const iconMap = {
   mint: Zap,
@@ -77,7 +75,7 @@ export default function NotificationsPage() {
                 </p>
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatDistanceToNow(new Date(n.timestamp), { addSuffix: false })}
+                {formatTimeAgo(n.timestamp)}
               </span>
             </div>
           );

@@ -1,15 +1,15 @@
 'use client';
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Image, Video, FileText, X, Check, Upload } from "lucide-react";
 import { useStore } from "@/store/useStore";
-import { useNavigate } from "react-router-dom";
 
 const steps = ["Type", "Content", "Pricing", "Royalties", "Review"];
 
 export default function CreatePage() {
   const { isSignedIn, signIn, walletAddress } = useStore();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [dropType, setDropType] = useState<"limited" | "open" | null>(null);
   const [title, setTitle] = useState("");
@@ -114,7 +114,7 @@ export default function CreatePage() {
               <div className="text-6xl mb-4">🎉</div>
               <h2 className="text-2xl font-bold text-foreground mb-2">Live on Kalieso!</h2>
               <p className="text-muted-foreground mb-6">Your drop has been deployed to Injective</p>
-              <button onClick={() => navigate("/")} className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:opacity-90 transition-default">
+              <button onClick={() => router.push("/")} className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:opacity-90 transition-default">
                 View Post
               </button>
             </div>

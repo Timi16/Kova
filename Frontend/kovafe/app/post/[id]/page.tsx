@@ -1,7 +1,8 @@
 'use client';
 
-import { useParams, Link } from "react-router-dom";
-import { Heart, MessageCircle, Share2, ArrowUpRight, Copy, ExternalLink, Minus, Plus, Volume2, VolumeX } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Heart, MessageCircle, Share2, ArrowUpRight, Minus, Plus } from "lucide-react";
 import { posts, formatINJ, formatCount, truncateAddress, creators, activityEvents } from "@/data/mockData";
 import { AddressChip } from "@/features/user/AddressChip";
 import { FollowButton } from "@/features/user/FollowButton";
@@ -10,7 +11,8 @@ import { useStore } from "@/store/useStore";
 import { useState } from "react";
 
 export default function PostDetailPage() {
-  const { id } = useParams();
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
   const post = posts.find((p) => p.id === id) || posts[0];
   const { isSignedIn, signIn, likedPosts, toggleLike } = useStore();
   const [quantity, setQuantity] = useState(1);
@@ -49,7 +51,7 @@ export default function PostDetailPage() {
           <div className="lg:sticky lg:top-[76px] space-y-6">
             {/* Creator */}
             <div className="flex items-center justify-between">
-              <Link to={`/profile/${post.creator.address}`} className="flex items-center gap-3">
+              <Link href={`/profile/${post.creator.address}`} className="flex items-center gap-3">
                 <img src={post.creator.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">{post.creator.name}</p>
@@ -138,7 +140,7 @@ export default function PostDetailPage() {
             {activeTab === "collectors" && (
               <div className="grid grid-cols-6 gap-2">
                 {collectors.map((c) => (
-                  <Link key={c.id} to={`/profile/${c.address}`} className="flex flex-col items-center gap-1">
+                  <Link key={c.id} href={`/profile/${c.address}`} className="flex flex-col items-center gap-1">
                     <img src={c.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
                     <span className="text-[10px] text-muted-foreground font-mono">{truncateAddress(c.address).slice(0, 6)}</span>
                   </Link>
@@ -180,14 +182,14 @@ export default function PostDetailPage() {
             {activeTab === "details" && (
               <div className="space-y-3 text-sm">
                 {[
-                  ["Contract", <AddressChip address={post.contractAddress} />],
-                  ["Token Standard", post.tokenStandard],
-                  ["Chain", "Injective inEVM"],
-                  ["Royalty", `${post.royalty}%`],
-                ].map(([label, val]) => (
-                  <div key={String(label)} className="flex items-center justify-between py-2 border-b border-border-subtle">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="text-foreground font-mono">{val}</span>
+                  { label: "Contract", value: <AddressChip address={post.contractAddress} /> },
+                  { label: "Token Standard", value: post.tokenStandard },
+                  { label: "Chain", value: "Injective inEVM" },
+                  { label: "Royalty", value: `${post.royalty}%` },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-border-subtle">
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="text-foreground font-mono">{item.value}</span>
                   </div>
                 ))}
               </div>

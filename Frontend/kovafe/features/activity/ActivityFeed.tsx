@@ -1,8 +1,7 @@
 import { Zap, TrendingUp, ArrowUpRight } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import type { ActivityEvent } from "@/data/mockData";
-import { truncateAddress, formatINJ } from "@/data/mockData";
+import { truncateAddress, formatINJ, formatTimeAgo } from "@/data/mockData";
 
 const eventConfig = {
   mint: { label: "MINT", color: "bg-primary/20 text-primary", icon: Zap },
@@ -35,7 +34,7 @@ export function ActivityItem({ event }: { event: ActivityEvent }) {
       </div>
       <span className="font-mono text-xs text-foreground whitespace-nowrap">{formatINJ(event.price)}</span>
       <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {formatDistanceToNow(new Date(event.timestamp), { addSuffix: false })}
+        {formatTimeAgo(event.timestamp)}
       </span>
     </div>
   );

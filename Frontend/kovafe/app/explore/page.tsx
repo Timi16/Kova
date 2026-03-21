@@ -1,9 +1,9 @@
 'use client';
 
+import Link from "next/link";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { posts, creators, categories, formatCount, formatINJ, truncateAddress } from "@/data/mockData";
-import { Link } from "react-router-dom";
 import { FollowButton } from "@/features/user/FollowButton";
 
 export default function ExplorePage() {
@@ -44,7 +44,7 @@ export default function ExplorePage() {
         <h2 className="text-lg font-bold text-foreground mb-4">Trending Posts</h2>
         <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
           {trending.map((post) => (
-            <Link key={post.id} to={`/post/${post.id}`} className="flex-shrink-0 w-[280px] card-surface overflow-hidden group">
+            <Link key={post.id} href={`/post/${post.id}`} className="flex-shrink-0 w-[280px] card-surface overflow-hidden group">
               <div className="aspect-square overflow-hidden">
                 <img src={post.media} alt={post.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
               </div>
@@ -67,10 +67,10 @@ export default function ExplorePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {topCreators.map((c) => (
             <div key={c.id} className="card-surface p-4 flex flex-col items-center text-center">
-              <Link to={`/profile/${c.address}`}>
+              <Link href={`/profile/${c.address}`}>
                 <img src={c.avatar} alt="" className="w-14 h-14 rounded-full object-cover mb-3" />
               </Link>
-              <Link to={`/profile/${c.address}`} className="text-sm font-semibold text-foreground hover:underline">{c.name}</Link>
+              <Link href={`/profile/${c.address}`} className="text-sm font-semibold text-foreground hover:underline">{c.name}</Link>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">{truncateAddress(c.address)}</p>
               <p className="text-xs text-muted-foreground mt-1">{c.postCount} posts · {formatINJ(c.totalVolume)} vol</p>
               <div className="mt-3">
@@ -86,7 +86,7 @@ export default function ExplorePage() {
         <h2 className="text-lg font-bold text-foreground mb-4">All Posts</h2>
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
           {posts.map((post) => (
-            <Link key={post.id} to={`/post/${post.id}`} className="card-surface overflow-hidden block break-inside-avoid group">
+            <Link key={post.id} href={`/post/${post.id}`} className="card-surface overflow-hidden block break-inside-avoid group">
               <div className="overflow-hidden">
                 <img src={post.media} alt={post.title} className="w-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
               </div>

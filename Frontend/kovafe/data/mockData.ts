@@ -94,9 +94,13 @@ export const creators: Creator[] = [
   { id: "c20", name: "Drift Yamamoto", address: addr(20), avatar: img(120, 100), bio: "Architecture of emptiness", followers: 12600, following: 145, postCount: 39, totalVolume: 1670.3, totalEarned: 1252.7 },
 ];
 
-const now = Date.now();
+const now = Date.parse("2025-01-15T12:00:00.000Z");
 const h = (hours: number) => new Date(now + hours * 3600000).toISOString();
 const ago = (hours: number) => new Date(now - hours * 3600000).toISOString();
+const seededValue = (seed: number) => {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
+};
 
 export const posts: Post[] = [
   { id: "p1", creator: creators[0], title: "Summer Void", description: "A meditation on absence in the heat", media: img(1), mediaType: "image", price: 0.042, mintCount: 1204, ownerCount: 892, likes: 842, comments: 34, type: "open", supply: 0, endsAt: h(6.4), status: "live", createdAt: ago(2), contractAddress: addr(41), tokenStandard: "ERC-1155", royalty: 5 },
@@ -131,16 +135,20 @@ export const posts: Post[] = [
   { id: "p30", creator: creators[9], title: "Pure Red", description: "Just red. Nothing else needed", media: img(30), mediaType: "image", price: 0.02, mintCount: 7800, ownerCount: 5400, likes: 6200, comments: 289, type: "open", supply: 0, endsAt: null, status: "live", createdAt: ago(40), contractAddress: addr(70), tokenStandard: "ERC-1155", royalty: 3 },
 ];
 
-export const listings: Listing[] = posts.slice(0, 20).flatMap((post, i) =>
-  Array.from({ length: Math.min(3, Math.floor(Math.random() * 4) + 1) }, (_, j) => ({
-    id: `l${i * 3 + j}`,
-    post,
-    seller: creators[(i + j + 3) % creators.length],
-    price: +(post.price * (1.2 + Math.random() * 3)).toFixed(4),
-    tokenId: i * 10 + j + 1,
-    listedAt: ago(Math.random() * 48),
-  }))
-);
+export const listings: Listing[] = posts.slice(0, 20).flatMap((post, i) => {
+  const count = Math.min(3, Math.floor(seededValue(i + 1) * 4) + 1);
+  return Array.from({ length: count }, (_, j) => {
+    const seed = (i + 1) * 10 + j + 1;
+    return {
+      id: `l${i * 3 + j}`,
+      post,
+      seller: creators[(i + j + 3) % creators.length],
+      price: +(post.price * (1.2 + seededValue(seed) * 3)).toFixed(4),
+      tokenId: i * 10 + j + 1,
+      listedAt: ago(seededValue(seed + 100) * 48),
+    };
+  });
+});
 
 const eventTypes: ActivityEvent["type"][] = ["mint", "sale", "list", "offer"];
 export const activityEvents: ActivityEvent[] = Array.from({ length: 40 }, (_, i) => ({
@@ -148,9 +156,9 @@ export const activityEvents: ActivityEvent[] = Array.from({ length: 40 }, (_, i)
   type: eventTypes[i % 4],
   actor: creators[i % creators.length],
   post: posts[i % posts.length],
-  price: +(Math.random() * 5).toFixed(4),
-  tokenId: Math.floor(Math.random() * 100) + 1,
-  timestamp: ago(Math.random() * 24),
+  price: +(seededValue(i + 200) * 5).toFixed(4),
+  tokenId: Math.floor(seededValue(i + 400) * 100) + 1,
+  timestamp: ago(seededValue(i + 600) * 24),
 })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
 export const notifications: Notification[] = [
@@ -184,4 +192,22 @@ export const formatCount = (n: number) => {
   if (n >= 10000) return `${(n / 1000).toFixed(1)}K`;
   if (n >= 1000) return n.toLocaleString();
   return n.toString();
+};
+
+export const formatTimeAgo = (timestamp: string, addSuffix = false) => {
+  const diffMs = Math.max(0, now - new Date(timestamp).getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  let value = "just now";
+  if (days > 0) {
+    value = `${days}d`;
+  } else if (hours > 0) {
+    value = `${hours}h`;
+  } else if (minutes > 0) {
+    value = `${minutes}m`;
+  }
+
+  return addSuffix && value !== "just now" ? `${value} ago` : value;
 };

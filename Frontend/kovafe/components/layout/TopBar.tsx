@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocation } from "react-router-dom";
+import { usePathname } from "next/navigation";
 import { Search, Bell, Wallet } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { truncateAddress } from "@/data/mockData";
@@ -18,15 +18,15 @@ const pageTitles: Record<string, string> = {
 };
 
 export function TopBar() {
-  const location = useLocation();
+  const pathname = usePathname();
   const { isSignedIn, walletAddress, signIn } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const title =
-    pageTitles[location.pathname] ||
-    (location.pathname.startsWith("/profile") ? "Profile" :
-    location.pathname.startsWith("/post") ? "Post" :
-    location.pathname.startsWith("/token") ? "Token" : "");
+    pageTitles[pathname] ||
+    (pathname.startsWith("/profile") ? "Profile" :
+    pathname.startsWith("/post") ? "Post" :
+    pathname.startsWith("/token") ? "Token" : "");
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-60 h-[60px] border-b border-border bg-background/80 backdrop-blur-md z-30 flex items-center justify-between px-4 lg:px-6">

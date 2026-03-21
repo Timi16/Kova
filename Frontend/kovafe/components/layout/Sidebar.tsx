@@ -1,6 +1,7 @@
 'use client';
 
-import { Link, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home, Compass, PlusSquare, Bell, User,
   TrendingUp, Zap, Settings, LogOut, Wallet,
@@ -9,17 +10,17 @@ import { useStore } from "@/store/useStore";
 import { truncateAddress, formatINJ } from "@/data/mockData";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Home" },
-  { to: "/explore", icon: Compass, label: "Explore" },
-  { to: "/create", icon: PlusSquare, label: "Create", accent: true },
-  { to: "/notifications", icon: Bell, label: "Notifications" },
-  { to: "/profile/me", icon: User, label: "Profile" },
-  { to: "/marketplace", icon: TrendingUp, label: "Marketplace" },
-  { to: "/activity", icon: Zap, label: "Activity" },
+  { href: "/", icon: Home, label: "Home" },
+  { href: "/explore", icon: Compass, label: "Explore" },
+  { href: "/create", icon: PlusSquare, label: "Create", accent: true },
+  { href: "/notifications", icon: Bell, label: "Notifications" },
+  { href: "/profile/me", icon: User, label: "Profile" },
+  { href: "/marketplace", icon: TrendingUp, label: "Marketplace" },
+  { href: "/activity", icon: Zap, label: "Activity" },
 ];
 
 export function Sidebar() {
-  const location = useLocation();
+  const pathname = usePathname();
   const { isSignedIn, walletAddress, injBalance, signIn, signOut } = useStore();
 
   return (
@@ -32,12 +33,12 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex-1 px-3 space-y-1">
-        {navItems.map(({ to, icon: Icon, label, accent }) => {
-          const active = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+        {navItems.map(({ href, icon: Icon, label, accent }) => {
+          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
             <Link
-              key={to}
-              to={to}
+              key={href}
+              href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-default ${
                 active
                   ? "bg-surface-elevated text-foreground"
@@ -69,7 +70,7 @@ export function Sidebar() {
             </div>
             <div className="flex gap-2">
               <Link
-                to="/settings"
+                href="/settings"
                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-lg hover:bg-surface transition-default"
               >
                 <Settings className="w-3.5 h-3.5" />
