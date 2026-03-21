@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/data/useProfile";
 import { useSocial } from "@/hooks/contracts/useSocial";
@@ -18,6 +19,7 @@ export function RequireAuth({
   const social = useSocial();
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const missingProfile = useMemo(() => {
     if (!requireProfile || !isAuthenticated || !address) return false;
@@ -79,12 +81,26 @@ export function RequireAuth({
             </div>
             <button
               onClick={async () => {
-                await social.createProfile(username, bio, "", "");
-                await profileQuery.refetch();
+                if (!username.trim()) {
+                  toast.error("Username is required");
+                  return;
+                }
+
+                setIsSubmitting(true);
+
+                try {
+                  await social.createProfile(username.trim(), bio.trim(), "", "");
+                  await profileQuery.refetch();
+                } catch {
+                  // The contract hook already surfaces the error via toast/state.
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}
+              disabled={isSubmitting || social.isLoading}
               className="mt-6 min-h-11 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
             >
-              Create Profile
+              {isSubmitting || social.isLoading ? "Creating..." : "Create Profile"}
             </button>
           </div>
         </div>
