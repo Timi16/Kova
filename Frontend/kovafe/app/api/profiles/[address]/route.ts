@@ -1,7 +1,7 @@
 import { normalizeAddress } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 import type { ProfileRow } from "@/lib/api-types";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json } from "@/lib/server/api";
 import { sumPricePaid } from "@/lib/server/queries";
 

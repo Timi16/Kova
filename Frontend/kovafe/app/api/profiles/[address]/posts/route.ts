@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { normalizeAddress } from "@/lib/format";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { hydratePosts, nextCursor } from "@/lib/server/queries";
 

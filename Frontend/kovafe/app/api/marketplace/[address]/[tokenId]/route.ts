@@ -1,5 +1,5 @@
 import { normalizeAddress } from "@/lib/format";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json } from "@/lib/server/api";
 import { fetchListingsWithContext, filterOffers } from "@/lib/server/queries";
 

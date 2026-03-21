@@ -1,6 +1,6 @@
 import { normalizeAddress } from "@/lib/format";
 import type { CollectionRow, MintRow } from "@/lib/api-types";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json } from "@/lib/server/api";
 import { uniqueOwners } from "@/lib/server/queries";
 

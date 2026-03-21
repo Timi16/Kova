@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { fetchCommentsWithProfiles, nextCursor } from "@/lib/server/queries";
 

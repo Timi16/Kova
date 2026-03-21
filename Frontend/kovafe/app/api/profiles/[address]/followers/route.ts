@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { normalizeAddress } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 import type { ProfileRow } from "@/lib/api-types";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { fetchProfiles, nextCursor } from "@/lib/server/queries";
 

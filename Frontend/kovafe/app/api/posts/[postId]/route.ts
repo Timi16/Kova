@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 import type { PostDetails } from "@/lib/api-types";
 import { normalizeAddress } from "@/lib/format";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { errorResponse, json } from "@/lib/server/api";
 import { fetchPost, hydratePosts } from "@/lib/server/queries";
 
