@@ -1,3 +1,5 @@
+'use client';
+
 import { useLocation } from "react-router-dom";
 import { Search, Bell, Wallet } from "lucide-react";
 import { useStore } from "@/store/useStore";

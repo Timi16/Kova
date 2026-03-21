@@ -1,3 +1,5 @@
+'use client';
+
 import { useParams, Link } from "react-router-dom";
 import { Heart, MessageCircle, Share2, ArrowUpRight, Copy, ExternalLink, Minus, Plus, Volume2, VolumeX } from "lucide-react";
 import { posts, formatINJ, formatCount, truncateAddress, creators, activityEvents } from "@/data/mockData";

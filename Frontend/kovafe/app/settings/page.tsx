@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { useStore } from "@/store/useStore";
 import { truncateAddress } from "@/data/mockData";

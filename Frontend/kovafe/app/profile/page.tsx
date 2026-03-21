@@ -1,3 +1,5 @@
+'use client';
+
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { creators, posts, formatCount, formatINJ, truncateAddress, activityEvents } from "@/data/mockData";

@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { Image, Video, FileText, X, Check, Upload } from "lucide-react";
 import { useStore } from "@/store/useStore";

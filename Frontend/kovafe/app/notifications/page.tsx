@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { Zap, TrendingUp, User, ArrowUpRight, MessageCircle, Heart, Check } from "lucide-react";
 import { notifications } from "@/data/mockData";

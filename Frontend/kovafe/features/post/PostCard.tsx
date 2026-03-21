@@ -1,3 +1,5 @@
+'use client';
+
 import { Link } from "react-router-dom";
 import { Heart, MessageCircle, Share2, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";

@@ -1,3 +1,5 @@
+'use client';
+
 import { Link, useLocation } from "react-router-dom";
 import {
   Home, Compass, PlusSquare, Bell, User,

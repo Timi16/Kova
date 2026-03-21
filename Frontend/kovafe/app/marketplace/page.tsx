@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Grid3x3, List, ArrowUpRight } from "lucide-react";

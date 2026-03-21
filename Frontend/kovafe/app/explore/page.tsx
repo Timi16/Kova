@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { posts, creators, categories, formatCount, formatINJ, truncateAddress } from "@/data/mockData";

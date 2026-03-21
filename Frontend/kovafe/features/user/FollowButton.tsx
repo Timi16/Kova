@@ -1,3 +1,5 @@
+'use client';
+
 import { useStore } from "@/store/useStore";
 
 export function FollowButton({ creatorId, small }: { creatorId: string; small?: boolean }) {
