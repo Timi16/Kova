@@ -25,7 +25,7 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-60 flex-col border-r border-border bg-background z-40">
-      <Link to="/" className="flex items-center gap-2 px-6 py-6">
+      <Link href="/" className="flex items-center gap-2 px-6 py-6">
         <span className="inline-block w-3 h-3 rounded-sm bg-primary" />
         <span className="text-lg font-bold tracking-tight text-foreground uppercase">
           Kalieso
