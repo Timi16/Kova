@@ -6,9 +6,11 @@ import { useSocial } from "@/hooks/contracts/useSocial";
 
 export function FollowButton({
   targetAddress,
+  creatorId,
   small,
 }: {
   targetAddress?: string;
+  creatorId?: string;
   small?: boolean;
 }) {
   const { login, isAuthenticated, address } = useAuth();
@@ -17,7 +19,7 @@ export function FollowButton({
   const following = Boolean(followingQuery.data?.isFollowing);
 
   const handleClick = async () => {
-    if (!targetAddress) return;
+    if (!targetAddress || creatorId) return;
     if (!isAuthenticated) {
       login();
       return;
