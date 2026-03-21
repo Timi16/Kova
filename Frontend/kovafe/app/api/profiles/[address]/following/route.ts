@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { normalizeAddress } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
+import type { ProfileRow } from "@/lib/api-types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { fetchProfiles, nextCursor } from "@/lib/server/queries";
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, context: Context) {
     const profiles = await fetchProfiles(
       (data ?? []).map((item: FollowRow) => item.following),
     );
-    const profileMap = new Map(
+    const profileMap = new Map<string, ProfileRow>(
       profiles.map((profile) => [profile.wallet, profile]),
     );
 

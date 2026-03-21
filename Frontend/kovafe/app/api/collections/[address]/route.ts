@@ -1,4 +1,5 @@
 import { normalizeAddress } from "@/lib/format";
+import type { CollectionRow, MintRow } from "@/lib/api-types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json } from "@/lib/server/api";
 import { uniqueOwners } from "@/lib/server/queries";
@@ -12,22 +13,24 @@ export async function GET(_: Request, context: Context) {
     const { address } = await context.params;
     const contract = normalizeAddress(address);
 
-    const { data: collection, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("collections")
       .select("*")
       .eq("address", contract)
       .maybeSingle();
+    const collection = data as CollectionRow | null;
 
     if (error) throw error;
     if (!collection) {
       return errorResponse("Collection not found", 404);
     }
 
-    const { data: mints, error: mintError } = await supabaseAdmin
+    const { data: mintData, error: mintError } = await supabaseAdmin
       .from("mints")
       .select("*")
       .eq("collection", contract)
       .order("created_at", { ascending: false });
+    const mints = (mintData ?? []) as MintRow[];
 
     if (mintError) throw mintError;
 

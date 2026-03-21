@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import type { PostDetails } from "@/lib/api-types";
 import { normalizeAddress } from "@/lib/format";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json } from "@/lib/server/api";
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest, context: Context) {
     }
 
     const [details] = await hydratePosts([post]);
+    const typedDetails = details as PostDetails;
 
     const [{ count: likeCount }, { count: commentCount }, likedResponse] =
       await Promise.all([
@@ -42,9 +44,9 @@ export async function GET(request: NextRequest, context: Context) {
       ]);
 
     return json({
-      ...details,
-      like_count_value: likeCount ?? details.like_count,
-      comment_count_value: commentCount ?? details.comment_count,
+      ...typedDetails,
+      like_count_value: likeCount ?? typedDetails.like_count,
+      comment_count_value: commentCount ?? typedDetails.comment_count,
       has_liked: Boolean(likedResponse.count),
     });
   } catch (error) {

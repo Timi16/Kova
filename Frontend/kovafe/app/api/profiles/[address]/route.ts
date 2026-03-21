@@ -1,5 +1,6 @@
 import { normalizeAddress } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
+import type { ProfileRow } from "@/lib/api-types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json } from "@/lib/server/api";
 import { sumPricePaid } from "@/lib/server/queries";
@@ -15,11 +16,12 @@ export async function GET(_: Request, context: Context) {
     const { address } = await context.params;
     const wallet = normalizeAddress(address);
 
-    const { data: profile, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("profiles")
       .select("*")
       .eq("wallet", wallet)
       .maybeSingle();
+    const profile = data as ProfileRow | null;
 
     if (error) throw error;
     if (!profile) {
