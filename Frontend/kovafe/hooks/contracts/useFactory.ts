@@ -123,18 +123,15 @@ export function useFactory() {
       minterType: MinterType,
       minterData: `0x${string}`,
     ) => {
-      const hash = await contractWrite.writeAndWait({
+      const receipt = await contractWrite.writeAndWaitForReceipt({
         address: CONTRACTS.FACTORY,
         abi: FACTORY_ABI,
         functionName: "deployNFTDrop",
         args: [nftConfig, minterType, minterData],
       });
-
-      const receipt = await contractWrite.writeAndWait;
-      void receipt;
-      return hash;
+      return parseDeploymentAddress(receipt, "NFTDropDeployed");
     },
-    [contractWrite],
+    [contractWrite, parseDeploymentAddress],
   );
 
   const deployEdition = useCallback(
@@ -144,16 +141,15 @@ export function useFactory() {
       minterType: MinterType,
       minterData: `0x${string}`,
     ) => {
-      const hash = await contractWrite.writeAndWait({
+      const receipt = await contractWrite.writeAndWaitForReceipt({
         address: CONTRACTS.FACTORY,
         abi: FACTORY_ABI,
         functionName: "deployEdition",
         args: [name, editionConfig, minterType, minterData],
       });
-
-      return hash;
+      return parseDeploymentAddress(receipt, "EditionDeployed");
     },
-    [contractWrite],
+    [contractWrite, parseDeploymentAddress],
   );
 
   const parseDeploymentAddress = useCallback(

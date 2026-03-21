@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { parseEventLogs } from "viem";
 import KALIESO_PROFILES_ABI from "@/lib/abis/kaliesoProfiles.abi";
 import KALIESO_FOLLOW_ABI from "@/lib/abis/kaliesoFollow.abi";
 import KALIESO_POSTS_ABI from "@/lib/abis/kaliesoPosts.abi";
@@ -80,8 +81,8 @@ export function useSocial() {
       description: string,
       contentURI: string,
       mediaType: string,
-    ) =>
-      contractWrite.writeAndWait({
+    ) => {
+      const receipt = await contractWrite.writeAndWaitForReceipt({
         address: CONTRACTS.KALIESO_POSTS,
         abi: KALIESO_POSTS_ABI,
         functionName: "createPost",
@@ -94,7 +95,20 @@ export function useSocial() {
           contentURI,
           mediaType,
         ],
-      }),
+      });
+
+      const [log] = parseEventLogs({
+        abi: KALIESO_POSTS_ABI,
+        eventName: "PostCreated",
+        logs: receipt.logs,
+      });
+
+      if (!log?.args?.postId) {
+        throw new Error("PostCreated event not found");
+      }
+
+      return Number(log.args.postId);
+    },
     [contractWrite],
   );
 

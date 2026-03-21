@@ -60,8 +60,55 @@ export function useContractWrite() {
     [publicClient, writeContractAsync],
   );
 
+  const writeAndWaitForReceipt = useCallback(
+    async (
+      config: WriteContractParameters,
+      pendingMessage = "Transaction submitted...",
+    ) => {
+      if (!publicClient) {
+        throw new Error("Missing public client");
+      }
+
+      setIsLoading(true);
+      setIsSuccess(false);
+      setError(null);
+
+      try {
+        const hash = await writeContractAsync(config);
+        setTxHash(hash);
+
+        const loadingId = toast.loading(pendingMessage, {
+          description: hash,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        toast.dismiss(loadingId);
+        toast.success("Done! View on Explorer ↗", {
+          description: hash,
+          action: {
+            label: "Explorer ↗",
+            onClick: () => window.open(explorerTxUrl(hash), "_blank", "noopener,noreferrer"),
+          },
+        });
+
+        setIsLoading(false);
+        setIsSuccess(true);
+        return receipt;
+      } catch (caught) {
+        const message = getTxErrorMessage(caught);
+        const nextError = new Error(message);
+        setError(nextError);
+        setIsLoading(false);
+        toast.error(message);
+        throw nextError;
+      }
+    },
+    [publicClient, writeContractAsync],
+  );
+
   return {
     writeAndWait,
+    writeAndWaitForReceipt,
     isLoading,
     isSuccess,
     error,
