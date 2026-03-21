@@ -3,7 +3,7 @@
 import { Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { truncateAddress } from "@/data/mockData";
+import { truncateAddress } from "@/lib/format";
 
 export function AddressChip({ address, linkToProfile }: { address: string; linkToProfile?: boolean }) {
   const [copied, setCopied] = useState(false);

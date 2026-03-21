@@ -1,340 +1,660 @@
 'use client';
 
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Image, Video, FileText, X, Check, Upload } from "lucide-react";
-import { useStore } from "@/store/useStore";
+import { Check, Image, Loader2, Upload, Video, X } from "lucide-react";
+import { MerkleTree } from "merkletreejs";
+import keccak256 from "keccak256";
+import { parseEther } from "viem";
+import { RequireAuth } from "@/components/auth/RequireAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { useFactory, MinterType, TokenType } from "@/hooks/contracts/useFactory";
+import { useSocial } from "@/hooks/contracts/useSocial";
+import { useINJPrice } from "@/hooks/data/useINJPrice";
 
 const steps = ["Type", "Content", "Pricing", "Royalties", "Review"];
 
+type DropType = "limited" | "open";
+type MintCard = "fixed" | "free" | "timed" | "allowlist";
+
+type UploadResult = {
+  cid: string;
+  url: string;
+};
+
+function uploadFileWithProgress(file: File, onProgress: (progress: number) => void) {
+  return new Promise<UploadResult>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error("Upload failed"));
+        return;
+      }
+
+      resolve(JSON.parse(xhr.responseText) as UploadResult);
+    };
+    xhr.onerror = () => reject(new Error("Upload failed"));
+
+    const formData = new FormData();
+    formData.append("file", file);
+    xhr.send(formData);
+  });
+}
+
 export default function CreatePage() {
-  const { isSignedIn, signIn, walletAddress } = useStore();
   const router = useRouter();
+  const { address } = useAuth();
+  const factory = useFactory();
+  const social = useSocial();
+  const injPrice = useINJPrice();
+
   const [step, setStep] = useState(0);
-  const [dropType, setDropType] = useState<"limited" | "open" | null>(null);
+  const [dropType, setDropType] = useState<DropType>("limited");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [minterType, setMinterType] = useState<string>("fixed");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [contentCID, setContentCID] = useState("");
+  const [minterType, setMinterType] = useState<MintCard>("fixed");
   const [price, setPrice] = useState("0.042");
   const [supply, setSupply] = useState("100");
   const [unlimited, setUnlimited] = useState(false);
   const [walletLimit, setWalletLimit] = useState("5");
   const [noLimit, setNoLimit] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [allowlistAddresses, setAllowlistAddresses] = useState("");
   const [royalty, setRoyalty] = useState(5);
-  const [deploying, setDeploying] = useState(false);
-  const [deployed, setDeployed] = useState(false);
+  const [receiverAddress, setReceiverAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  if (!isSignedIn) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Create a Drop</h2>
-        <p className="text-muted-foreground mb-6">Sign in to deploy your content onchain</p>
-        <button onClick={signIn} className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:opacity-90 transition-default">
-          Sign In
-        </button>
-      </div>
-    );
+  useEffect(() => {
+    if (address && !receiverAddress) {
+      setReceiverAddress(address);
+    }
+  }, [address, receiverAddress]);
+
+  const merkleRoot = useMemo(() => {
+    const addresses = allowlistAddresses
+      .split("\n")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!addresses.length) return "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+    const leaves = addresses.map((entry) => keccak256(entry));
+    const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+    return tree.getHexRoot() as `0x${string}`;
+  }, [allowlistAddresses]);
+
+  const mintPriceDisplay =
+    minterType === "free" ? "FREE + gas" : `${Number(price || 0).toFixed(4)} INJ`;
+
+  const usdEstimate =
+    minterType === "free"
+      ? 0
+      : Number(price || 0) * (injPrice.data?.usd ?? 0);
+
+  async function handleFileSelect(file: File) {
+    setSelectedFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploaded = await uploadFileWithProgress(file, setUploadProgress);
+      setContentCID(uploaded.cid);
+    } finally {
+      setUploading(false);
+    }
   }
 
-  const canNext =
-    (step === 0 && dropType !== null) ||
-    (step === 1 && title.trim() !== "") ||
-    step === 2 ||
-    step === 3 ||
-    step === 4;
+  async function handleDeploy() {
+    if (!address) return;
+    if (!title.trim() || !contentCID) {
+      throw new Error("Title and uploaded media are required");
+    }
 
-  const handleDeploy = () => {
-    setDeploying(true);
-    setTimeout(() => {
-      setDeploying(false);
-      setDeployed(true);
-    }, 2500);
-  };
+    if (minterType === "allowlist" && merkleRoot.endsWith("0000000000000000000000000000000000000000000000000000000000000000")) {
+      throw new Error("Add at least one allowlist address");
+    }
+
+    setSubmitting(true);
+
+    try {
+      const metadata = await fetch("/api/upload/metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: title,
+          description,
+          image: `ipfs://${contentCID}`,
+          external_url: "https://kalieso.xyz",
+        }),
+      }).then(async (response) => {
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.error ?? "Metadata upload failed");
+        }
+        return response.json() as Promise<UploadResult>;
+      });
+
+      const maxSupply = BigInt(unlimited ? 0 : Number(supply || 0));
+      const mintStart = BigInt(startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0);
+      const mintEnd = BigInt(endTime ? Math.floor(new Date(endTime).getTime() / 1000) : 0);
+      const perWallet = BigInt(noLimit ? 0 : Number(walletLimit || 0));
+      const parsedPrice = parseEther(minterType === "free" ? "0" : price || "0");
+
+      const minterData = factory.encodeMinterData(
+        minterType === "free"
+          ? MinterType.Free
+          : minterType === "timed"
+            ? MinterType.Timed
+            : minterType === "allowlist"
+              ? MinterType.Allowlist
+              : MinterType.FixedPrice,
+        minterType === "free"
+          ? { walletLimit: perWallet }
+          : minterType === "timed"
+            ? {
+                price: parsedPrice,
+                startTime: mintStart,
+                endTime: mintEnd,
+                maxPerWallet: perWallet,
+              }
+            : minterType === "allowlist"
+              ? {
+                  price: parsedPrice,
+                  merkleRoot,
+                  maxPerWallet: perWallet,
+                }
+              : {
+                  price: parsedPrice,
+                  maxPerWallet: perWallet,
+                },
+      );
+
+      const collectionAddress =
+        dropType === "limited"
+          ? await factory.deployNFTDrop(
+              {
+                name: title,
+                symbol: title.slice(0, 4).toUpperCase() || "KALI",
+                baseURI: `ipfs://${metadata.cid}`,
+                hiddenURI: "",
+                maxSupply,
+                mintPrice: parsedPrice,
+                mintStart,
+                mintEnd,
+                walletLimit: perWallet,
+                royaltyBps: Math.round(royalty * 100),
+                royaltyReceiver: receiverAddress as `0x${string}`,
+                isRevealed: true,
+              },
+              minterType === "free"
+                ? MinterType.Free
+                : minterType === "timed"
+                  ? MinterType.Timed
+                  : minterType === "allowlist"
+                    ? MinterType.Allowlist
+                    : MinterType.FixedPrice,
+              minterData,
+            )
+          : await factory.deployEdition(
+              title,
+              {
+                name: title,
+                uri: `ipfs://${metadata.cid}`,
+                tokenId: 1n,
+                maxSupply,
+                mintPrice: parsedPrice,
+                mintStart,
+                mintEnd,
+                walletLimit: perWallet,
+                royaltyBps: Math.round(royalty * 100),
+                royaltyReceiver: receiverAddress as `0x${string}`,
+              },
+              minterType === "free"
+                ? MinterType.Free
+                : minterType === "timed"
+                  ? MinterType.Timed
+                  : minterType === "allowlist"
+                    ? MinterType.Allowlist
+                    : MinterType.FixedPrice,
+              minterData,
+            );
+
+      const postId = await social.createPost(
+        collectionAddress,
+        dropType === "limited" ? TokenType.ERC721 : TokenType.ERC1155,
+        dropType === "limited" ? 0n : 1n,
+        title,
+        description,
+        `ipfs://${contentCID}`,
+        selectedFile?.type.startsWith("video") ? "video" : "image",
+      );
+
+      router.push(`/post/${postId}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 lg:px-6 py-6">
-      {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {steps.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <button
-              onClick={() => i < step && setStep(i)}
-              className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-default ${
-                i === step ? "bg-primary text-primary-foreground" :
-                i < step ? "bg-primary/20 text-primary" :
-                "bg-surface text-muted-foreground"
-              }`}
-            >
-              {i < step ? <Check className="w-4 h-4" /> : i + 1}
-            </button>
-            {i < steps.length - 1 && <div className={`w-8 h-px ${i < step ? "bg-primary" : "bg-border"}`} />}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-8">
-        {/* Live Preview */}
-        <div className="hidden lg:block w-[400px] flex-shrink-0">
-          <div className="sticky top-[76px]">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Live Preview</p>
-            <div className="card-surface overflow-hidden">
-              <div className="p-4 pb-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-400" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">You</p>
-                  <p className="text-xs font-mono text-muted-foreground">Just now</p>
-                </div>
-              </div>
-              <div className="aspect-square bg-surface-elevated flex items-center justify-center">
-                {mediaPreview ? (
-                  <img src={mediaPreview} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <Image className="w-12 h-12 text-muted-foreground" />
-                )}
-              </div>
-              <div className="p-4 space-y-2">
-                <p className="text-base font-bold text-foreground">{title || "Your title here"}</p>
-                {description && <p className="text-sm text-muted-foreground">{description}</p>}
-                <div className="flex items-center justify-between pt-2">
-                  <span className="font-mono text-sm text-foreground">
-                    {minterType === "free" ? "FREE + gas" : `${price} INJ`}
-                  </span>
-                  <span className="px-5 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold">MINT →</span>
-                </div>
-              </div>
+    <RequireAuth requireProfile>
+      <div className="mx-auto max-w-[1100px] px-4 py-6 lg:px-6">
+        <div className="mb-8 flex items-center justify-center gap-2">
+          {steps.map((label, index) => (
+            <div key={label} className="flex items-center gap-2">
+              <button
+                onClick={() => index < step && setStep(index)}
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-default ${
+                  index === step
+                    ? "bg-primary text-primary-foreground"
+                    : index < step
+                      ? "bg-primary/20 text-primary"
+                      : "bg-surface text-muted-foreground"
+                }`}
+              >
+                {index < step ? <Check className="h-4 w-4" /> : index + 1}
+              </button>
+              {index < steps.length - 1 ? (
+                <div className={`h-px w-8 ${index < step ? "bg-primary" : "bg-border"}`} />
+              ) : null}
             </div>
-          </div>
+          ))}
         </div>
 
-        {/* Form */}
-        <div className="flex-1 max-w-[500px]">
-          {deployed ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Live on Kalieso!</h2>
-              <p className="text-muted-foreground mb-6">Your drop has been deployed to Injective</p>
-              <button onClick={() => router.push("/")} className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:opacity-90 transition-default">
-                View Post
-              </button>
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <div className="hidden w-[400px] flex-shrink-0 lg:block">
+            <div className="sticky top-[76px]">
+              <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+                Live Preview
+              </p>
+              <div className="card-surface overflow-hidden">
+                <div className="flex items-center gap-3 p-4 pb-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">You</p>
+                    <p className="text-xs font-mono text-muted-foreground">Ready to publish</p>
+                  </div>
+                </div>
+                <div className="aspect-square bg-surface-elevated">
+                  {mediaPreview ? (
+                    selectedFile?.type.startsWith("video") ? (
+                      <video src={mediaPreview} className="h-full w-full object-cover" controls />
+                    ) : (
+                      <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
+                    )
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Image className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 p-4">
+                  <p className="text-base font-bold text-foreground">
+                    {title || "Your title here"}
+                  </p>
+                  {description ? (
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                  ) : null}
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="font-mono text-sm text-foreground">{mintPriceDisplay}</span>
+                    <span className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">
+                      MINT →
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              <h2 className="text-xl font-bold text-foreground mb-6">{steps[step]}</h2>
+          </div>
 
-              {step === 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                  {([["limited", "◈ Limited Drop", "ERC-721", "Fixed supply, numbered tokens"], ["open", "⊕ Open Edition", "ERC-1155", "Unlimited or timed window"]] as const).map(([type, label, standard, desc]) => (
+          <div className="max-w-[560px] flex-1">
+            <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
+              Create on Injective
+            </h1>
+
+            {step === 0 ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {([
+                  ["limited", "◈ Limited Drop", "ERC-721", "Fixed supply, numbered tokens"],
+                  ["open", "⊕ Open Edition", "ERC-1155", "Open or timed social edition"],
+                ] as const).map(([type, label, standard, desc]) => (
+                  <button
+                    key={type}
+                    onClick={() => setDropType(type)}
+                    className={`card-surface relative p-5 text-left transition-default ${
+                      dropType === type ? "border-primary" : "hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {dropType === type ? (
+                      <Check className="absolute right-3 top-3 h-5 w-5 text-primary" />
+                    ) : null}
+                    <p className="mb-2 text-lg font-bold text-foreground">{label}</p>
+                    <p className="mb-1 text-xs font-mono text-muted-foreground">{standard}</p>
+                    <p className="text-sm text-muted-foreground">{desc}</p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {step === 1 ? (
+              <div className="space-y-4">
+                <label className="block cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center transition-default hover:border-primary/50">
+                  <input
+                    type="file"
+                    accept="image/*,video/mp4,video/webm"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void handleFileSelect(file);
+                    }}
+                  />
+                  {mediaPreview ? (
+                    <div className="relative">
+                      {selectedFile?.type.startsWith("video") ? (
+                        <video src={mediaPreview} className="aspect-square w-full rounded-lg object-cover" controls />
+                      ) : (
+                        <img src={mediaPreview} alt="" className="aspect-square w-full rounded-lg object-cover" />
+                      )}
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setMediaPreview(null);
+                          setSelectedFile(null);
+                          setContentCID("");
+                        }}
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/80"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-3 flex justify-center gap-3 text-muted-foreground">
+                        <Image className="h-6 w-6" />
+                        <Video className="h-6 w-6" />
+                        <Upload className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        Drop your media here or click to upload
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        JPG, PNG, GIF, WEBP, MP4, WebM · Max 50MB
+                      </p>
+                    </>
+                  )}
+                </label>
+
+                {uploading ? (
+                  <div className="rounded-xl border border-border bg-surface p-4">
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="text-foreground">Uploading to IPFS</span>
+                      <span className="font-mono text-muted-foreground">{uploadProgress}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-surface-elevated">
+                      <div className="h-full bg-primary" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                ) : null}
+
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Title (required)"
+                  className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                />
+                <div className="relative">
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value.slice(0, 1000))}
+                    placeholder="Description (optional)"
+                    rows={4}
+                    className="w-full resize-none rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                  />
+                  <span className="absolute bottom-3 right-3 text-xs text-muted-foreground">
+                    {description.length}/1000
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {step === 2 ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {(["fixed", "free", "timed", "allowlist"] as const).map((card) => (
                     <button
-                      key={type}
-                      onClick={() => setDropType(type)}
-                      className={`card-surface p-5 text-left relative transition-default ${
-                        dropType === type ? "border-primary" : "hover:border-muted-foreground/30"
+                      key={card}
+                      onClick={() => setMinterType(card)}
+                      className={`card-surface p-4 text-left transition-default ${
+                        minterType === card ? "border-primary" : "hover:border-muted-foreground/30"
                       }`}
                     >
-                      {dropType === type && <Check className="absolute top-3 right-3 w-5 h-5 text-primary" />}
-                      <p className="text-lg font-bold text-foreground mb-2">{label}</p>
-                      <p className="text-xs text-muted-foreground font-mono mb-1">{standard}</p>
-                      <p className="text-sm text-muted-foreground">{desc}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {card === "fixed"
+                          ? "Fixed Price"
+                          : card === "free"
+                            ? "Free"
+                            : card === "timed"
+                              ? "Timed"
+                              : "Allowlist"}
+                      </p>
                     </button>
                   ))}
                 </div>
-              )}
 
-              {step === 1 && (
-                <div className="space-y-4">
-                  <div
-                    onClick={() => setMediaPreview("https://picsum.photos/seed/upload/600/600")}
-                    className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-muted-foreground transition-default"
-                  >
-                    {mediaPreview ? (
-                      <div className="relative w-full">
-                        <img src={mediaPreview} alt="" className="w-full aspect-square object-cover rounded-lg" />
-                        <button onClick={(e) => { e.stopPropagation(); setMediaPreview(null); }} className="absolute top-2 right-2 w-8 h-8 bg-background/80 rounded-full flex items-center justify-center">
-                          <X className="w-4 h-4 text-foreground" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex gap-3 mb-3 text-muted-foreground">
-                          <Image className="w-6 h-6" />
-                          <Video className="w-6 h-6" />
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <p className="text-sm text-foreground font-medium mb-1">Drop your media here or click to upload</p>
-                        <p className="text-xs text-muted-foreground">JPG, PNG, GIF, MP4, WebM · Max 50MB</p>
-                      </>
-                    )}
+                {minterType !== "free" ? (
+                  <div>
+                    <label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
+                      Mint Price
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={price}
+                        onChange={(event) => setPrice(event.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                      />
+                      <span className="text-sm font-mono text-muted-foreground">INJ</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ~${usdEstimate.toFixed(2)}
+                    </p>
                   </div>
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Title (required)"
-                    className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary text-sm"
-                  />
-                  <div className="relative">
+                ) : null}
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Supply Cap
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={unlimited}
+                        onChange={() => setUnlimited((current) => !current)}
+                        className="mr-2 accent-primary"
+                      />
+                      Unlimited
+                    </label>
+                  </div>
+                  {!unlimited ? (
+                    <input
+                      value={supply}
+                      onChange={(event) => setSupply(event.target.value)}
+                      className="w-full rounded-lg border border-border bg-surface px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                    />
+                  ) : null}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Wallet Limit
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={noLimit}
+                        onChange={() => setNoLimit((current) => !current)}
+                        className="mr-2 accent-primary"
+                      />
+                      No limit
+                    </label>
+                  </div>
+                  {!noLimit ? (
+                    <input
+                      value={walletLimit}
+                      onChange={(event) => setWalletLimit(event.target.value)}
+                      className="w-full rounded-lg border border-border bg-surface px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                    />
+                  ) : null}
+                </div>
+
+                {minterType === "timed" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <input
+                      type="datetime-local"
+                      value={startTime}
+                      onChange={(event) => setStartTime(event.target.value)}
+                      className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={endTime}
+                      onChange={(event) => setEndTime(event.target.value)}
+                      className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                ) : null}
+
+                {minterType === "allowlist" ? (
+                  <div>
+                    <label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
+                      Allowlist Addresses
+                    </label>
                     <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value.slice(0, 280))}
-                      placeholder="Description (optional)"
-                      rows={3}
-                      className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary text-sm resize-none"
+                      value={allowlistAddresses}
+                      onChange={(event) => setAllowlistAddresses(event.target.value)}
+                      rows={6}
+                      placeholder="One address per line"
+                      className="w-full rounded-lg border border-border bg-surface px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-primary"
                     />
-                    <span className="absolute bottom-3 right-3 text-xs text-muted-foreground">{description.length}/280</span>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Merkle Root: <span className="font-mono">{merkleRoot}</span>
+                    </p>
                   </div>
-                </div>
-              )}
+                ) : null}
+              </div>
+            ) : null}
 
-              {step === 2 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-3">
-                    {["fixed", "free", "timed", "allowlist"].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setMinterType(t)}
-                        className={`card-surface p-4 text-left transition-default capitalize ${
-                          minterType === t ? "border-primary" : "hover:border-muted-foreground/30"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-foreground">{t === "fixed" ? "Fixed Price" : t === "free" ? "Free Mint" : t === "timed" ? "Timed Edition" : "Allowlist"}</p>
-                      </button>
-                    ))}
-                  </div>
-                  {minterType !== "free" && (
-                    <div>
-                      <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">Price</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                          className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-foreground font-mono focus:outline-none focus:border-primary text-sm"
-                        />
-                        <span className="text-sm font-mono text-muted-foreground">INJ</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 font-mono">~${(parseFloat(price || "0") * 22.5).toFixed(2)}</p>
-                    </div>
-                  )}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs text-muted-foreground uppercase tracking-wider">Supply</label>
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                        <input type="checkbox" checked={unlimited} onChange={() => setUnlimited(!unlimited)} className="accent-primary" />
-                        Unlimited
-                      </label>
-                    </div>
-                    {!unlimited && (
-                      <input value={supply} onChange={(e) => setSupply(e.target.value)} className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-foreground font-mono focus:outline-none focus:border-primary text-sm" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs text-muted-foreground uppercase tracking-wider">Wallet Limit</label>
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                        <input type="checkbox" checked={noLimit} onChange={() => setNoLimit(!noLimit)} className="accent-primary" />
-                        No limit
-                      </label>
-                    </div>
-                    {!noLimit && (
-                      <input value={walletLimit} onChange={(e) => setWalletLimit(e.target.value)} className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-foreground font-mono focus:outline-none focus:border-primary text-sm" />
-                    )}
-                  </div>
+            {step === 3 ? (
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-3 block text-xs uppercase tracking-wider text-muted-foreground">
+                    Royalty: {royalty}% ({royalty * 100} bps)
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={royalty}
+                    onChange={(event) => setRoyalty(Number(event.target.value))}
+                    className="w-full accent-primary"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
+                    Receiver Address
+                  </label>
+                  <input
+                    value={receiverAddress}
+                    onChange={(event) => setReceiverAddress(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-surface px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            ) : null}
 
-              {step === 3 && (
-                <div className="space-y-6">
-                  <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-3">Royalty: {royalty}% ({royalty * 100} bps)</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={10}
-                      step={0.5}
-                      value={royalty}
-                      onChange={(e) => setRoyalty(parseFloat(e.target.value))}
-                      className="w-full accent-primary"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>0%</span><span>10%</span>
-                    </div>
+            {step === 4 ? (
+              <div className="space-y-4">
+                <div className="card-surface space-y-3 p-5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Type</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {dropType === "limited" ? "Limited Drop" : "Open Edition"}
+                    </span>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">Receiver Address</label>
-                    <input
-                      defaultValue={walletAddress || ""}
-                      className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-foreground font-mono text-sm focus:outline-none focus:border-primary"
-                    />
-                    <button className="text-xs text-primary mt-1.5 hover:underline">Use my wallet</button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mint strategy</span>
+                    <span className="text-sm font-semibold capitalize text-foreground">
+                      {minterType}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mint price</span>
+                    <span className="font-mono text-sm text-foreground">{mintPriceDisplay}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Supply</span>
+                    <span className="font-mono text-sm text-foreground">
+                      {unlimited ? "Unlimited" : supply}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Wallet limit</span>
+                    <span className="font-mono text-sm text-foreground">
+                      {noLimit ? "No limit" : walletLimit}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Estimated gas</span>
+                    <span className="text-sm text-foreground">Calculated in wallet</span>
                   </div>
                 </div>
-              )}
+                <button
+                  onClick={() => void handleDeploy()}
+                  disabled={submitting || uploading}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Deploy to Injective
+                </button>
+              </div>
+            ) : null}
 
-              {step === 4 && (
-                <div className="space-y-6">
-                  <div className="card-surface p-5 space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Title</span>
-                      <span className="text-foreground font-medium">{title || "Untitled"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className="text-foreground font-medium">{dropType === "open" ? "Open Edition" : "Limited Drop"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Minter</span>
-                      <span className="text-foreground font-medium capitalize">{minterType === "fixed" ? "Fixed Price" : minterType}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Price</span>
-                      <span className="text-foreground font-mono">{minterType === "free" ? "FREE" : `${price} INJ`}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Supply</span>
-                      <span className="text-foreground font-mono">{unlimited ? "Unlimited" : supply}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Royalty</span>
-                      <span className="text-foreground font-mono">{royalty}%</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Estimated gas: ~0.002 INJ</p>
-                  <button
-                    onClick={handleDeploy}
-                    disabled={deploying}
-                    className="w-full py-3.5 bg-primary text-primary-foreground rounded-full font-bold text-base hover:opacity-90 transition-default disabled:opacity-50"
-                  >
-                    {deploying ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Upload className="w-4 h-4 animate-spin" />
-                        Deploying...
-                      </span>
-                    ) : "Deploy to Injective"}
-                  </button>
-                </div>
-              )}
-
-              {!deployed && step < 4 && (
-                <div className="flex justify-between mt-8">
-                  <button
-                    onClick={() => setStep(Math.max(0, step - 1))}
-                    disabled={step === 0}
-                    className="px-5 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 transition-default"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canNext}
-                    className="px-6 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-semibold hover:opacity-90 disabled:opacity-30 transition-default"
-                  >
-                    Continue
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+            <div className="mt-8 flex items-center justify-between">
+              <button
+                onClick={() => setStep((current) => Math.max(0, current - 1))}
+                disabled={step === 0}
+                className="rounded-full border border-border px-4 py-2 text-sm text-foreground disabled:opacity-40"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}
+                disabled={
+                  step === steps.length - 1 ||
+                  (step === 1 && (!title.trim() || !contentCID)) ||
+                  (step === 2 && minterType === "timed" && (!startTime || !endTime))
+                }
+                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </RequireAuth>
   );
 }

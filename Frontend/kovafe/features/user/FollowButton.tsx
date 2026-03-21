@@ -1,14 +1,35 @@
 'use client';
 
-import { useStore } from "@/store/useStore";
+import { useAuth } from "@/hooks/useAuth";
+import { useIsFollowing } from "@/hooks/data/useProfile";
+import { useSocial } from "@/hooks/contracts/useSocial";
 
-export function FollowButton({ creatorId, small }: { creatorId: string; small?: boolean }) {
-  const { followedCreators, toggleFollow, isSignedIn, signIn } = useStore();
-  const following = followedCreators.has(creatorId);
+export function FollowButton({
+  targetAddress,
+  small,
+}: {
+  targetAddress?: string;
+  small?: boolean;
+}) {
+  const { login, isAuthenticated, address } = useAuth();
+  const social = useSocial();
+  const followingQuery = useIsFollowing(address, targetAddress);
+  const following = Boolean(followingQuery.data?.isFollowing);
 
-  const handleClick = () => {
-    if (!isSignedIn) { signIn(); return; }
-    toggleFollow(creatorId);
+  const handleClick = async () => {
+    if (!targetAddress) return;
+    if (!isAuthenticated) {
+      login();
+      return;
+    }
+
+    if (following) {
+      await social.unfollow(targetAddress as `0x${string}`);
+    } else {
+      await social.follow(targetAddress as `0x${string}`);
+    }
+
+    await followingQuery.refetch();
   };
 
   return (

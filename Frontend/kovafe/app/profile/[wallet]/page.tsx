@@ -1,44 +1,72 @@
 'use client';
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import { creators, posts, formatCount, formatINJ, activityEvents } from "@/data/mockData";
-import { FollowButton } from "@/features/user/FollowButton";
-import { AddressChip } from "@/features/user/AddressChip";
 import { Settings } from "lucide-react";
+import { AddressChip } from "@/features/user/AddressChip";
+import { EmptyState } from "@/features/common/EmptyState";
+import { FollowButton } from "@/features/user/FollowButton";
+import { PostCard } from "@/features/post/PostCard";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile, useProfileCollected, useProfilePosts } from "@/hooks/data/useProfile";
+import { useWalletActivity } from "@/hooks/data/useActivity";
+import { formatINJ } from "@/lib/format";
 
 export default function ProfilePage() {
   const params = useParams<{ wallet: string }>();
-  const wallet = params?.wallet ?? "me";
-  const creator =
-    wallet === "me"
-      ? creators[0]
-      : creators.find((c) => c.address === wallet) || creators[0];
-  const isOwn = wallet === "me";
-  const [tab, setTab] = useState<"posts" | "collected" | "listed" | "activity">("posts");
-  const creatorPosts = posts.filter((p) => p.creator.id === creator.id);
+  const { address } = useAuth();
+  const wallet = params?.wallet === "me" ? address : params?.wallet;
+  const profile = useProfile(wallet);
+  const posts = useProfilePosts(wallet);
+  const collected = useProfileCollected(wallet);
+  const activity = useWalletActivity(wallet);
+  const [tab, setTab] = useState<"posts" | "collected" | "activity">("posts");
+
+  const isOwn = useMemo(
+    () => Boolean(address && wallet && address.toLowerCase() === wallet.toLowerCase()),
+    [address, wallet],
+  );
+
+  if (profile.isLoading) {
+    return <div className="px-4 py-10 text-sm text-muted-foreground">Loading profile...</div>;
+  }
+
+  if (!profile.data || !wallet) {
+    return (
+      <EmptyState
+        icon={Settings}
+        title="Profile not found"
+        subtitle="This wallet has not created a Kalieso profile yet."
+        ctaLabel="Create Profile"
+        onCta={() => (window.location.href = "/settings")}
+      />
+    );
+  }
+
+  const postItems = posts.data?.pages.flatMap((page) => page.posts) ?? [];
+  const collectedItems = collected.data?.pages.flatMap((page) => page.mints) ?? [];
+  const activityItems = activity.data?.activity ?? [];
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-6 px-4 py-6 lg:px-6">
       <div className="relative h-40 rounded-xl bg-gradient-to-r from-primary/30 via-purple-600/20 to-primary/10">
         <div className="absolute -bottom-7 left-6">
-          <img src={creator.avatar} alt="" className="h-16 w-16 rounded-full border-4 border-background object-cover" />
+          <div className="h-16 w-16 rounded-full border-4 border-background bg-gradient-to-br from-primary to-purple-400" />
         </div>
       </div>
 
       <div className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">{creator.name}</h1>
-          <AddressChip address={creator.address} />
-          {creator.bio ? <p className="mt-2 max-w-md text-sm text-muted-foreground">{creator.bio}</p> : null}
+          <h1 className="text-xl font-bold text-foreground">{profile.data.username}</h1>
+          <AddressChip address={profile.data.wallet} />
+          {profile.data.bio ? <p className="mt-2 max-w-md text-sm text-muted-foreground">{profile.data.bio}</p> : null}
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             {[
-              [creator.postCount, "Posts"],
-              [formatCount(creator.followers), "Followers"],
-              [formatCount(creator.following), "Following"],
-              [formatINJ(creator.totalVolume), "Volume"],
-              [formatINJ(creator.totalEarned), "Earned"],
+              [profile.data.post_count, "Posts"],
+              [profile.data.follower_count, "Followers"],
+              [profile.data.following_count, "Following"],
+              [formatINJ(profile.data.total_earned), "Earned"],
             ].map(([value, label]) => (
               <div key={String(label)}>
                 <span className="font-mono font-semibold text-foreground">{value}</span>
@@ -49,18 +77,18 @@ export default function ProfilePage() {
         </div>
         <div>
           {isOwn ? (
-            <Link href="/settings" className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface transition-default">
+            <Link href="/settings" className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground">
               <Settings className="h-4 w-4" />
               Edit Profile
             </Link>
           ) : (
-            <FollowButton creatorId={creator.id} />
+            <FollowButton targetAddress={profile.data.wallet} />
           )}
         </div>
       </div>
 
       <div className="flex w-fit gap-1 rounded-lg bg-surface p-1">
-        {(["posts", "collected", "listed", "activity"] as const).map((tabName) => (
+        {(["posts", "collected", "activity"] as const).map((tabName) => (
           <button
             key={tabName}
             onClick={() => setTab(tabName)}
@@ -74,71 +102,61 @@ export default function ProfilePage() {
       </div>
 
       {tab === "posts" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(creatorPosts.length > 0 ? creatorPosts : posts.slice(0, 6)).map((post) => (
-            <Link key={post.id} href={`/post/${post.id}`} className="card-surface overflow-hidden group">
-              <div className="aspect-square overflow-hidden">
-                <img src={post.media} alt={post.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
-              </div>
-              <div className="p-3">
-                <h3 className="truncate text-sm font-semibold text-foreground">{post.title}</h3>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-xs font-mono text-foreground">{formatINJ(post.price)}</span>
-                  <span className="text-xs text-muted-foreground">{formatCount(post.mintCount)} ◆</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        postItems.length ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {postItems.map((post) => (
+              <PostCard key={post.post_id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Settings}
+            title="No posts yet"
+            subtitle="This profile has not published any drops."
+            ctaLabel={isOwn ? "Create Post" : undefined}
+            onCta={isOwn ? () => (window.location.href = "/create") : undefined}
+          />
+        )
       ) : null}
 
       {tab === "collected" ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {posts.slice(5, 17).map((post, index) => (
-            <Link key={post.id} href={`/post/${post.id}`} className="card-surface overflow-hidden group">
-              <div className="aspect-square overflow-hidden">
-                <img src={post.media} alt={post.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+        collectedItems.length ? (
+          <div className="card-surface space-y-3 p-4">
+            {collectedItems.map((mint) => (
+              <div key={`${mint.collection}-${mint.token_id}-${mint.created_at}`} className="flex items-center justify-between border-b border-border-subtle py-2 text-sm">
+                <span className="font-mono text-foreground">{mint.collection}</span>
+                <span className="text-muted-foreground">
+                  Token #{mint.token_id} · {mint.quantity}x
+                </span>
               </div>
-              <div className="p-2.5">
-                <p className="truncate text-xs font-semibold text-foreground">{post.title}</p>
-                <p className="mt-0.5 text-[10px] font-mono text-muted-foreground">#{index + 1}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
-      {tab === "listed" ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {posts.slice(0, 4).map((post) => (
-            <div key={post.id} className="card-surface overflow-hidden">
-              <div className="aspect-square overflow-hidden">
-                <img src={post.media} alt={post.title} className="h-full w-full object-cover" />
-              </div>
-              <div className="p-2.5">
-                <p className="truncate text-xs font-semibold text-foreground">{post.title}</p>
-                <p className="mt-1 text-sm font-mono text-foreground">{formatINJ(post.price * 2.5)}</p>
-                <button className="mt-2 w-full rounded-lg bg-primary py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-default">
-                  Buy
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Settings}
+            title="No collected tokens"
+            subtitle="This wallet has not minted anything yet."
+          />
+        )
       ) : null}
 
       {tab === "activity" ? (
-        <div className="card-surface space-y-2 p-4">
-          {activityEvents.slice(0, 10).map((event) => (
-            <div key={event.id} className="flex items-center justify-between border-b border-border-subtle py-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase text-primary">{event.type}</span>
-                <span className="text-foreground">{event.post.title}</span>
+        activityItems.length ? (
+          <div className="card-surface space-y-2 p-4">
+            {activityItems.map((event) => (
+              <div key={event.id} className="flex items-center justify-between border-b border-border-subtle py-2 text-sm">
+                <span className="font-medium text-foreground">{event.event_type}</span>
+                <span className="font-mono text-muted-foreground">{event.amount ?? event.tx_hash ?? "-"}</span>
               </div>
-              <span className="text-xs font-mono text-foreground">{formatINJ(event.price)}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Settings}
+            title="No activity yet"
+            subtitle="This wallet has no indexed activity."
+          />
+        )
       ) : null}
     </div>
   );
