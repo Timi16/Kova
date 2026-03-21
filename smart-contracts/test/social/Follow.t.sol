@@ -27,11 +27,11 @@ contract FollowTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsOwner() public {
+    function test_DeploymentSetsOwner() public view {
         assertEq(followContract.owner(), owner);
     }
 
-    function test_InitialCountsAreZero() public {
+    function test_InitialCountsAreZero() public view {
         assertEq(followContract.followerCount(alice), 0);
         assertEq(followContract.followingCount(alice), 0);
     }
@@ -274,12 +274,12 @@ contract FollowTest is Test {
         assertEq(following[1], charlie);
     }
 
-    function test_GetFollowersReturnsEmptyIfNone() public {
+    function test_GetFollowersReturnsEmptyIfNone() public view {
         address[] memory followers = followContract.getFollowers(alice);
         assertEq(followers.length, 0);
     }
 
-    function test_GetFollowingReturnsEmptyIfNone() public {
+    function test_GetFollowingReturnsEmptyIfNone() public view {
         address[] memory following = followContract.getFollowing(alice);
         assertEq(following.length, 0);
     }
@@ -288,7 +288,7 @@ contract FollowTest is Test {
     //  IS FOLLOWING
     // ─────────────────────────────────────────
 
-    function test_IsFollowingReturnsFalseInitially() public {
+    function test_IsFollowingReturnsFalseInitially() public view {
         assertFalse(followContract.isFollowing(alice, bob));
     }
 

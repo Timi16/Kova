@@ -62,14 +62,14 @@ contract PostsTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsProfilesContract() public {
+    function test_DeploymentSetsProfilesContract() public view {
         assertEq(
             address(posts.profilesContract()),
             address(profiles)
         );
     }
 
-    function test_TotalPostsStartsZero() public {
+    function test_TotalPostsStartsZero() public view {
         assertEq(posts.totalPosts(), 0);
     }
 
@@ -594,7 +594,7 @@ contract PostsTest is Test {
         assertEq(alicePosts[1].creator, alice);
     }
 
-    function test_GetPostsByCreatorReturnsEmptyIfNone() public {
+    function test_GetPostsByCreatorReturnsEmptyIfNone() public view {
         IPosts.Post[] memory result = posts.getPostsByCreator(charlie);
         assertEq(result.length, 0);
     }

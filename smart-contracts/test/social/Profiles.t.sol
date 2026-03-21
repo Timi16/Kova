@@ -26,11 +26,11 @@ contract ProfilesTest is Test {
     //  DEPLOYMENT
     // ─────────────────────────────────────────
 
-    function test_DeploymentSetsOwner() public {
+    function test_DeploymentSetsOwner() public view {
         assertEq(profiles.owner(), owner);
     }
 
-    function test_TotalProfilesStartsZero() public {
+    function test_TotalProfilesStartsZero() public view {
         assertEq(profiles.getTotalProfiles(), 0);
     }
 
@@ -364,10 +364,11 @@ contract ProfilesTest is Test {
         vm.assume(count > 0 && count <= 20);
 
         for (uint8 i = 1; i <= count; i++) {
-            address user = makeAddr(string(abi.encodePacked("user", i)));
+            string memory suffix = vm.toString(uint256(i));
+            address user = makeAddr(string.concat("user", suffix));
             vm.prank(user);
             profiles.createProfile(
-                string(abi.encodePacked("user_", i)),
+                string.concat("user_", suffix),
                 "Bio",
                 "",
                 ""
