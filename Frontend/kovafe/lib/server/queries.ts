@@ -68,7 +68,7 @@ export async function hydratePosts(posts: PostRow[]): Promise<FeedPost[]> {
   })) as FeedPost[];
 }
 
-export async function fetchPost(postId: number) {
+export async function fetchPost(postId: number): Promise<PostRow | null> {
   const { data, error } = await supabaseAdmin
     .from("posts")
     .select("*")
@@ -76,7 +76,7 @@ export async function fetchPost(postId: number) {
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  return (data as PostRow | null) ?? null;
 }
 
 export async function fetchCommentsWithProfiles(comments: CommentRow[]) {
