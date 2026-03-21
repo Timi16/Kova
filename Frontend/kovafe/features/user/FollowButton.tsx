@@ -1,19 +1,24 @@
-"use client";
+import { useStore } from "@/store/useStore";
 
-import { useState } from "react";
+export function FollowButton({ creatorId, small }: { creatorId: string; small?: boolean }) {
+  const { followedCreators, toggleFollow, isSignedIn, signIn } = useStore();
+  const following = followedCreators.has(creatorId);
 
-type FollowButtonProps = {
-  initialFollowing?: boolean;
-};
-
-export function FollowButton({ initialFollowing = false }: FollowButtonProps) {
-  const [following, setFollowing] = useState(initialFollowing);
+  const handleClick = () => {
+    if (!isSignedIn) { signIn(); return; }
+    toggleFollow(creatorId);
+  };
 
   return (
     <button
-      type="button"
-      onClick={() => setFollowing((current) => !current)}
-      className="rounded-full border border-border px-4 py-2 text-sm font-medium"
+      onClick={handleClick}
+      className={`rounded-full font-semibold transition-default ${
+        small ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm"
+      } ${
+        following
+          ? "bg-surface border border-border text-foreground hover:border-destructive hover:text-destructive"
+          : "bg-primary text-primary-foreground hover:opacity-90"
+      }`}
     >
       {following ? "Following" : "Follow"}
     </button>
