@@ -19,14 +19,14 @@ export default createConfig({
     Factory: {
       network: "injective",
       abi: FACTORY_ABI,
-      address: "0x5fcE9Db69fbeEB5D14C020C2c391874DbC6281C8",
-      startBlock: 118000000,
+      address: "0x570ba8d1693Bc1963B1209048Ff68ff826e841d4", // ✅ new
+      startBlock: 118150854, // ✅ deployment block
     },
     FixedPriceMinter: {
       network: "injective",
       abi: FIXED_PRICE_MINTER_ABI,
-      address: "0x487963Cf2046977E0D3176E8a7b6FC81ac7f7851",
-      startBlock: 118000000,
+      address: "0xEFc8AdCb848C3f95D8EE90F585AFdd745cd9be01", // ✅ new
+      startBlock: 118150854,
     },
     Marketplace: {
       network: "injective",
