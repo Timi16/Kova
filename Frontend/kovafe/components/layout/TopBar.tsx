@@ -1,10 +1,9 @@
 'use client';
 
 import { usePathname } from "next/navigation";
-import { Search, Bell, Wallet } from "lucide-react";
-import { useStore } from "@/store/useStore";
-import { truncateAddress } from "@/data/mockData";
+import { Search, Bell } from "lucide-react";
 import { useState } from "react";
+import { SignInButton } from "@/components/auth/SignInButton";
 
 const pageTitles: Record<string, string> = {
   "/": "Home",
@@ -19,7 +18,6 @@ const pageTitles: Record<string, string> = {
 
 export function TopBar() {
   const pathname = usePathname();
-  const { isSignedIn, walletAddress, signIn } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const title =
@@ -67,22 +65,7 @@ export function TopBar() {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
         </button>
 
-        {isSignedIn && walletAddress ? (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-border">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-purple-400" />
-            <span className="text-xs font-mono text-foreground">
-              {truncateAddress(walletAddress)}
-            </span>
-          </div>
-        ) : (
-          <button
-            onClick={signIn}
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold hover:opacity-90 transition-default"
-          >
-            <Wallet className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign In</span>
-          </button>
-        )}
+        <SignInButton />
       </div>
     </header>
   );
