@@ -1,6 +1,6 @@
 'use client';
 
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { Heart, MessageCircle, Share2, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Post } from "@/data/mockData";
@@ -31,12 +31,12 @@ export function PostCard({ post }: { post: Post }) {
     <div className="card-surface overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 pb-3">
-        <Link to={`/profile/${post.creator.address}`}>
+        <Link href={`/profile/${post.creator.address}`}>
           <img src={post.creator.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Link to={`/profile/${post.creator.address}`} className="text-sm font-semibold text-foreground hover:underline">
+            <Link href={`/profile/${post.creator.address}`} className="text-sm font-semibold text-foreground hover:underline">
               {post.creator.name}
             </Link>
             <AddressChip address={post.creator.address} />
@@ -48,7 +48,7 @@ export function PostCard({ post }: { post: Post }) {
       </div>
 
       {/* Media */}
-      <Link to={`/post/${post.id}`}>
+      <Link href={`/post/${post.id}`}>
         <div className="aspect-square relative overflow-hidden">
           <img
             src={post.media}
@@ -61,7 +61,7 @@ export function PostCard({ post }: { post: Post }) {
       {/* Info */}
       <div className="p-4 space-y-3">
         <div>
-          <Link to={`/post/${post.id}`} className="text-base font-bold text-foreground hover:underline">
+          <Link href={`/post/${post.id}`} className="text-base font-bold text-foreground hover:underline">
             {post.title}
           </Link>
           {post.description && (
@@ -99,7 +99,7 @@ export function PostCard({ post }: { post: Post }) {
               <Heart className={`w-4 h-4 ${liked ? "fill-destructive text-destructive" : "group-hover:text-destructive"}`} />
               <span>{formatCount(post.likes + (liked ? 1 : 0))}</span>
             </button>
-            <Link to={`/post/${post.id}`} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-default">
+            <Link href={`/post/${post.id}`} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-default">
               <MessageCircle className="w-4 h-4" />
               <span>{formatCount(post.comments)}</span>
             </Link>

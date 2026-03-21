@@ -1,8 +1,8 @@
 import { Zap, TrendingUp, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import type { ActivityEvent } from "@/data/mockData";
 import { truncateAddress, formatINJ } from "@/data/mockData";
-import { Link } from "react-router-dom";
 
 const eventConfig = {
   mint: { label: "MINT", color: "bg-primary/20 text-primary", icon: Zap },
@@ -18,7 +18,7 @@ export function ActivityItem({ event }: { event: ActivityEvent }) {
       <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${config.color}`}>
         {config.label}
       </span>
-      <Link to={`/post/${event.post.id}`}>
+      <Link href={`/post/${event.post.id}`}>
         <img src={event.post.media} alt="" className="w-8 h-8 rounded object-cover" />
       </Link>
       <div className="flex-1 min-w-0">

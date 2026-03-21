@@ -1,8 +1,8 @@
 'use client';
 
 import { Copy, Check } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { truncateAddress } from "@/data/mockData";
 
 export function AddressChip({ address, linkToProfile }: { address: string; linkToProfile?: boolean }) {
@@ -26,7 +26,7 @@ export function AddressChip({ address, linkToProfile }: { address: string; linkT
   );
 
   if (linkToProfile) {
-    return <Link to={`/profile/${address}`} className="hover:text-foreground transition-default">{content}</Link>;
+    return <Link href={`/profile/${address}`} className="hover:text-foreground transition-default">{content}</Link>;
   }
   return content;
 }
