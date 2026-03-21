@@ -23,7 +23,7 @@ contract DeployMarketplace is Script {
 
         // FeeManager must already be deployed
         // pass its address via env
-        address feeManagerAddr = vm.envAddress("FEE_MANAGER_ADDRESS");
+        address feeManagerAddr = vm.envAddress("FEE_MANAGER");
 
         console.log("Deploying Marketplace contracts...");
         console.log("  FeeManager:  ", feeManagerAddr);

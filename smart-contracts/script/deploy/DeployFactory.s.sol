@@ -26,37 +26,50 @@ contract DeployFactory is Script {
         helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory cfg = helperConfig.getConfig();
 
-        address feeManagerAddr = vm.envAddress("FEE_MANAGER_ADDRESS");
+        address feeManagerAddr = vm.envAddress("FEE_MANAGER");
 
         console.log("Deploying Minters + Factory...");
         console.log("  FeeManager:", feeManagerAddr);
-        console.log("  Owner:     ", cfg.deployer);
+        console.log("  Config deployer:", cfg.deployer);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        // ── deploy all four minters ──
-        fixedPriceMinter = new FixedPriceMinter(feeManagerAddr, cfg.deployer);
-        freeMinter       = new FreeMinter(feeManagerAddr, cfg.deployer);
-        timedMinter      = new TimedMinter(feeManagerAddr, cfg.deployer);
-        allowlistMinter  = new AllowlistMinter(feeManagerAddr, cfg.deployer);
+        // msg.sender here is the actual broadcaster (derived from DEPLOYER_PRIVATE_KEY)
+        // — not cfg.deployer which may be a hardcoded anvil address
+        address deployer = msg.sender;
+        console.log("  Actual broadcaster:", deployer);
 
-        // ── deploy factory, passing all minter addresses ──
+        // ── deploy all four minters owned by the actual broadcaster ──
+        fixedPriceMinter = new FixedPriceMinter(feeManagerAddr, deployer);
+        freeMinter       = new FreeMinter(feeManagerAddr, deployer);
+        timedMinter      = new TimedMinter(feeManagerAddr, deployer);
+        allowlistMinter  = new AllowlistMinter(feeManagerAddr, deployer);
+
+        // ── deploy factory ──
         factory = new Factory(
             feeManagerAddr,
             address(fixedPriceMinter),
             address(freeMinter),
             address(timedMinter),
             address(allowlistMinter),
-            cfg.deployer
+            deployer  // factory owner = actual broadcaster
         );
+
+        // ── transfer minter ownership to factory ──
+        // broadcaster owns the minters, so this call succeeds
+        fixedPriceMinter.transferOwnership(address(factory));
+        freeMinter.transferOwnership(address(factory));
+        timedMinter.transferOwnership(address(factory));
+        allowlistMinter.transferOwnership(address(factory));
 
         vm.stopBroadcast();
 
-        console.log("FixedPriceMinter deployed at:", address(fixedPriceMinter));
-        console.log("FreeMinter deployed at:      ", address(freeMinter));
-        console.log("TimedMinter deployed at:     ", address(timedMinter));
-        console.log("AllowlistMinter deployed at: ", address(allowlistMinter));
-        console.log("Factory deployed at:         ", address(factory));
+        console.log("FixedPriceMinter:", address(fixedPriceMinter));
+        console.log("FreeMinter:      ", address(freeMinter));
+        console.log("TimedMinter:     ", address(timedMinter));
+        console.log("AllowlistMinter: ", address(allowlistMinter));
+        console.log("Factory:         ", address(factory));
+        console.log("Minter ownership transferred to factory.");
 
         return (
             factory,

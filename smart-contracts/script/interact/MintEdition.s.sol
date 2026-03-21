@@ -10,7 +10,7 @@ contract MintEdition is Script {
 
     function run() external {
         address fixedMinterAddr  = vm.envAddress("FIXED_PRICE_MINTER_ADDRESS");
-        address feeManagerAddr   = vm.envAddress("FEE_MANAGER_ADDRESS");
+        address feeManagerAddr   = vm.envAddress("FEE_MANAGER");
         address editionAddress   = vm.envAddress("EDITION_CONTRACT_ADDRESS");
         address mintTo           = vm.envAddress("DEPLOYER_ADDRESS");
         uint256 tokenId          = 1;

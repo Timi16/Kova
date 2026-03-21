@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useActiveWallet, useWallets } from "@privy-io/react-auth";
+import type { ConnectedWallet } from "@privy-io/react-auth";
 import type { WriteContractParameters } from "wagmi/actions";
 import { toast } from "sonner";
 import { useChainId, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
@@ -25,6 +26,16 @@ function parsePrivyChainId(value?: string) {
   return parseHexChainId(value);
 }
 
+// Narrow to EVM-only ConnectedWallet (has chainId + switchChain)
+function isEvmWallet(wallet: unknown): wallet is ConnectedWallet {
+  return (
+    typeof wallet === "object" &&
+    wallet !== null &&
+    "chainId" in wallet &&
+    "switchChain" in wallet
+  );
+}
+
 export function useContractWrite() {
   const publicClient = usePublicClient();
   const currentChainId = useChainId();
@@ -38,11 +49,13 @@ export function useContractWrite() {
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
   const ensureActiveInjectiveWallet = useCallback(async () => {
-    const walletOnInjective = wallets.find(
+    const evmWallets = wallets.filter(isEvmWallet);
+
+    const walletOnInjective = evmWallets.find(
       (wallet) => parsePrivyChainId(wallet.chainId) === injectiveTestnet.id,
     );
-    const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === "privy");
-    const preferredWallet = walletOnInjective ?? embeddedWallet ?? activeWallet;
+    const embeddedWallet = evmWallets.find((wallet) => wallet.walletClientType === "privy");
+    const preferredWallet = walletOnInjective ?? embeddedWallet ?? (isEvmWallet(activeWallet) ? activeWallet : undefined);
 
     if (!preferredWallet) {
       return;

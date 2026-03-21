@@ -10,7 +10,7 @@ contract MintNFT is Script {
 
     function run() external {
         address fixedMinterAddr = vm.envAddress("FIXED_PRICE_MINTER_ADDRESS");
-        address feeManagerAddr  = vm.envAddress("FEE_MANAGER_ADDRESS");
+        address feeManagerAddr  = vm.envAddress("FEE_MANAGER");
         address nftAddress      = vm.envAddress("NFT_CONTRACT_ADDRESS");
         address mintTo          = vm.envAddress("DEPLOYER_ADDRESS");
         uint256 quantity        = 1;
