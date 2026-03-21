@@ -29,8 +29,8 @@ export async function POST(request: Request) {
       return errorResponse("File exceeds 50MB limit", 400);
     }
 
-    const result = await pinata.upload.file(file);
-    const cid = (result as { IpfsHash?: string }).IpfsHash;
+    const result = await pinata.upload.file(file) as unknown as { cid: string; IpfsHash: string };
+    const cid = result.cid ?? result.IpfsHash;
 
     if (!cid) {
       throw new Error("Pinata upload did not return a CID");
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       url: `https://jade-obvious-goose-24.mypinata.cloud/ipfs/${cid}`,
     });
   } catch (error) {
+    console.error("Pinata upload error:", error);
     return errorResponse(
       error instanceof Error ? error.message : "Upload failed",
     );
