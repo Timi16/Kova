@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useActiveWallet, useWallets } from "@privy-io/react-auth";
 import type { WriteContractParameters } from "wagmi/actions";
 import { toast } from "sonner";
 import { useChainId, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
@@ -15,9 +16,20 @@ function parseHexChainId(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parsePrivyChainId(value?: string) {
+  if (!value) return null;
+  if (value.startsWith("eip155:")) {
+    const parsed = Number.parseInt(value.slice("eip155:".length), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return parseHexChainId(value);
+}
+
 export function useContractWrite() {
   const publicClient = usePublicClient();
   const currentChainId = useChainId();
+  const { wallet: activeWallet, setActiveWallet } = useActiveWallet();
+  const { wallets } = useWallets();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +37,33 @@ export function useContractWrite() {
   const [error, setError] = useState<Error | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
+  const ensureActiveInjectiveWallet = useCallback(async () => {
+    const walletOnInjective = wallets.find(
+      (wallet) => parsePrivyChainId(wallet.chainId) === injectiveTestnet.id,
+    );
+    const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === "privy");
+    const preferredWallet = walletOnInjective ?? embeddedWallet ?? activeWallet;
+
+    if (!preferredWallet) {
+      return;
+    }
+
+    if (activeWallet?.address !== preferredWallet.address) {
+      setActiveWallet(preferredWallet);
+      await sleep(500);
+    }
+
+    if (parsePrivyChainId(preferredWallet.chainId) === injectiveTestnet.id) {
+      return;
+    }
+
+    await preferredWallet.switchChain(injectiveTestnet.id);
+    await sleep(500);
+  }, [activeWallet, setActiveWallet, wallets]);
+
   const ensureInjectiveChain = useCallback(async () => {
+    await ensureActiveInjectiveWallet();
+
     if (currentChainId === injectiveTestnet.id) {
       return;
     }
@@ -57,7 +95,7 @@ export function useContractWrite() {
     throw new Error(
       `Please switch your wallet to ${injectiveTestnet.name} (chain ${injectiveTestnet.id}) and try again.`,
     );
-  }, [currentChainId, switchChainAsync]);
+  }, [currentChainId, ensureActiveInjectiveWallet, switchChainAsync]);
 
   const writeAndWait = useCallback(
     async (
