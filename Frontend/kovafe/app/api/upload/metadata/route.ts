@@ -20,8 +20,8 @@ export async function POST(request: Request) {
       return errorResponse("Metadata name and image are required", 400);
     }
 
-    const result = await pinata.upload.json(body) as unknown as { cid: string; IpfsHash: string };
-    const cid = result.cid ?? result.IpfsHash;
+    const result = await pinata.upload.json(body);
+    const cid = (result as { IpfsHash?: string }).IpfsHash;
 
     if (!cid) {
       throw new Error("Pinata metadata upload did not return a CID");
@@ -32,7 +32,6 @@ export async function POST(request: Request) {
       url: `https://jade-obvious-goose-24.mypinata.cloud/ipfs/${cid}`,
     });
   } catch (error) {
-    console.error("Pinata metadata error:", error);
     return errorResponse(
       error instanceof Error ? error.message : "Metadata upload failed",
     );
