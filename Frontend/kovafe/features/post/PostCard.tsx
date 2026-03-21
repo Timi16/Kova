@@ -5,8 +5,8 @@ import { Heart, MessageCircle, Share2, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Post } from "@/data/mockData";
 import { formatINJ, formatCount } from "@/data/mockData";
-import { AddressChip } from "./AddressChip";
-import { CountdownTimer } from "./CountdownTimer";
+import { CountdownTimer } from "@/features/common/CountdownTimer";
+import { AddressChip } from "@/features/user/AddressChip";
 import { useStore } from "@/store/useStore";
 
 export function PostCard({ post }: { post: Post }) {

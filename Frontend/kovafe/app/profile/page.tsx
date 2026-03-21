@@ -3,8 +3,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { creators, posts, formatCount, formatINJ, truncateAddress, activityEvents } from "@/data/mockData";
-import { FollowButton } from "@/components/FollowButton";
-import { AddressChip } from "@/components/AddressChip";
+import { FollowButton } from "@/features/user/FollowButton";
+import { AddressChip } from "@/features/user/AddressChip";
 import { Settings } from "lucide-react";
 
 export default function ProfilePage() {

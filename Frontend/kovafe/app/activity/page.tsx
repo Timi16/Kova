@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { activityEvents } from "@/data/mockData";
-import { ActivityItem } from "@/components/ActivityFeed";
+import { ActivityItem } from "@/features/activity/ActivityFeed";
 
 const filters = ["All", "Mints", "Sales", "Listings", "Offers"] as const;
 

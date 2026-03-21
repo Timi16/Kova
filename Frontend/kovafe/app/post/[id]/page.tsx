@@ -3,9 +3,9 @@
 import { useParams, Link } from "react-router-dom";
 import { Heart, MessageCircle, Share2, ArrowUpRight, Copy, ExternalLink, Minus, Plus, Volume2, VolumeX } from "lucide-react";
 import { posts, formatINJ, formatCount, truncateAddress, creators, activityEvents } from "@/data/mockData";
-import { AddressChip } from "@/components/AddressChip";
-import { FollowButton } from "@/components/FollowButton";
-import { CountdownTimer } from "@/components/CountdownTimer";
+import { AddressChip } from "@/features/user/AddressChip";
+import { FollowButton } from "@/features/user/FollowButton";
+import { CountdownTimer } from "@/features/common/CountdownTimer";
 import { useStore } from "@/store/useStore";
 import { useState } from "react";
 

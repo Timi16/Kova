@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { posts, creators, categories, formatCount, formatINJ, truncateAddress } from "@/data/mockData";
 import { Link } from "react-router-dom";
-import { FollowButton } from "@/components/FollowButton";
+import { FollowButton } from "@/features/user/FollowButton";
 
 export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState("All");

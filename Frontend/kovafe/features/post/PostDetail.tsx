@@ -1,4 +1,4 @@
-import { mockPosts } from "@/data/mockData";
+import { posts } from "@/data/mockData";
 import { PostCard } from "@/features/post/PostCard";
 
 type PostDetailProps = {
@@ -6,7 +6,7 @@ type PostDetailProps = {
 };
 
 export function PostDetail({ id }: PostDetailProps) {
-  const post = mockPosts.find((item) => item.id === id);
+  const post = posts.find((item) => item.id === id);
 
   if (!post) {
     return (
@@ -21,7 +21,7 @@ export function PostDetail({ id }: PostDetailProps) {
     <section className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold">Post Detail</h1>
       <div className="mt-4">
-        <PostCard id={post.id} title={post.title} body={post.body} author={post.author} />
+        <PostCard post={post} />
       </div>
     </section>
   );

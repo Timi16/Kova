@@ -1,12 +1,11 @@
 "use client";
 import { posts, creators, activityEvents, formatCount, truncateAddress, formatINJ } from "@/data/mockData";
-import { PostCard } from "@/components/PostCard";
-import { FollowButton } from "@/components/FollowButton";
-import { ActivityItem } from "@/components/ActivityFeed";
+import { PostCard } from "@/features/post/PostCard";
+import { FollowButton } from "@/features/user/FollowButton";
+import { ActivityItem } from "@/features/activity/ActivityFeed";
 import { useStore } from "@/store/useStore";
 import { Link } from "react-router-dom";
 import { TrendingUp, Zap } from "lucide-react";
-import { use } from "react";
 
 function TrendingSidebar() {
   const trending = [...posts].sort((a, b) => b.mintCount - a.mintCount).slice(0, 5);
