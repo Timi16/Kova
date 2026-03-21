@@ -71,6 +71,23 @@ type EditionConfig = {
 export function useFactory() {
   const contractWrite = useContractWrite();
 
+  const parseDeploymentAddress = useCallback(
+    (receipt: { logs: readonly unknown[] }, eventName: "NFTDropDeployed" | "EditionDeployed") => {
+      const [log] = parseEventLogs({
+        abi: FACTORY_ABI,
+        eventName,
+        logs: receipt.logs as Parameters<typeof parseEventLogs>[0]["logs"],
+      });
+
+      if (!log?.args?.collection) {
+        throw new Error("Collection deployment event not found");
+      }
+
+      return log.args.collection as `0x${string}`;
+    },
+    [],
+  );
+
   const encodeMinterData = useCallback(
     (
       minterType: MinterType,
@@ -150,23 +167,6 @@ export function useFactory() {
       return parseDeploymentAddress(receipt, "EditionDeployed");
     },
     [contractWrite, parseDeploymentAddress],
-  );
-
-  const parseDeploymentAddress = useCallback(
-    (receipt: { logs: readonly unknown[] }, eventName: "NFTDropDeployed" | "EditionDeployed") => {
-      const [log] = parseEventLogs({
-        abi: FACTORY_ABI,
-        eventName,
-        logs: receipt.logs as Parameters<typeof parseEventLogs>[0]["logs"],
-      });
-
-      if (!log?.args?.collection) {
-        throw new Error("Collection deployment event not found");
-      }
-
-      return log.args.collection as `0x${string}`;
-    },
-    [],
   );
 
   return {
