@@ -82,7 +82,7 @@ export function useFactory() {
       try {
         await publicClient.simulateContract({
           address: CONTRACTS.FACTORY,
-          abi: FACTORY_ABI[0].abi,
+          abi: FACTORY_ABI,
           functionName,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           args: args as any,
@@ -102,7 +102,7 @@ export function useFactory() {
   const parseDeploymentAddress = useCallback(
     (receipt: { logs: readonly unknown[] }, eventName: "NFTDropDeployed" | "EditionDeployed") => {
       const parsed = parseEventLogs({
-        abi: FACTORY_ABI[0].abi,
+        abi: FACTORY_ABI,
         eventName,
         logs: receipt.logs as Parameters<typeof parseEventLogs>[0]["logs"],
         strict: false,
@@ -174,7 +174,7 @@ export function useFactory() {
       await simulate("deployNFTDrop", [nftConfig, minterType, minterData]);
       const receipt = await contractWrite.writeAndWaitForReceipt({
         address: CONTRACTS.FACTORY,
-        abi: FACTORY_ABI[0].abi,
+        abi: FACTORY_ABI,
         functionName: "deployNFTDrop",
         args: [nftConfig, minterType, minterData],
       });
@@ -193,7 +193,7 @@ export function useFactory() {
       await simulate("deployEdition", [name, editionConfig, minterType, minterData]);
       const receipt = await contractWrite.writeAndWaitForReceipt({
         address: CONTRACTS.FACTORY,
-        abi: FACTORY_ABI[0].abi,
+        abi: FACTORY_ABI,
         functionName: "deployEdition",
         args: [name, editionConfig, minterType, minterData],
       });

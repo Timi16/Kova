@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { ponder } from "@/generated";
 
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import KALIESO_POSTS_ABI from "../../Frontend/kovafe/lib/abis/kaliesoPosts.abi";
+const KALIESO_POSTS_ADDRESS = "0x99DeEe4b6840c757305Bb4f5a8fCbb2d05266a42";
 
 if (!supabaseServiceRoleKey) {
   throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for the indexer.");
@@ -305,15 +307,25 @@ ponder.on("KaliesoFollow:Unfollowed", async ({ event }) => {
     .eq("following", normalizeAddress(event.args.following));
 });
 
-ponder.on("KaliesoPosts:PostCreated", async ({ event }) => {
+ponder.on("KaliesoPosts:PostCreated", async ({ event, context }) => {
+  const timestamp = timestampFromEvent(event);
+
+  const onChain = await context.client.readContract({
+    address: KALIESO_POSTS_ADDRESS,
+    abi: KALIESO_POSTS_ABI,
+    functionName: "getPost",
+    args: [event.args.postId],
+  });
+
   await supabaseAdmin.from("posts").insert({
     post_id: Number(event.args.postId),
     creator: normalizeAddress(event.args.creator),
     nft_contract: normalizeAddress(event.args.nftContract),
     token_type: getTokenTypeName(event.args.tokenType),
     title: event.args.title,
-    content_uri: "",
-    created_at: timestampFromEvent(event),
+    content_uri: onChain.contentURI ?? "",
+    media_type: onChain.mediaType ?? "image",
+    created_at: timestamp,
     tx_hash: event.transaction.hash,
   });
 
@@ -323,7 +335,7 @@ ponder.on("KaliesoPosts:PostCreated", async ({ event }) => {
     contract: normalizeAddress(event.args.nftContract),
     post_id: Number(event.args.postId),
     tx_hash: event.transaction.hash,
-    created_at: timestampFromEvent(event),
+    created_at: timestamp,
   });
 });
 
