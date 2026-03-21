@@ -8,7 +8,7 @@ export const privyConfig = {
   loginMethods: ["wallet", "email", "google", "twitter"],
   appearance: {
     theme: "dark" as const,
-    accentColor: "#836EF9",
+    accentColor: "#836EF9" as const,
   },
   embeddedWallets: {
     createOnLogin: "users-without-wallets" as const,

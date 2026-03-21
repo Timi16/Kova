@@ -7,9 +7,12 @@ export function explorerTxUrl(hash: string) {
 
 export function getTxErrorMessage(error: unknown) {
   if (error instanceof BaseError) {
+    const walked = error.walk((node) => node instanceof BaseError) as
+      | BaseError
+      | undefined;
     const details = [
       error.shortMessage,
-      error.walk((node) => node instanceof BaseError)?.shortMessage,
+      walked?.shortMessage,
       error.details,
     ]
       .filter(Boolean)

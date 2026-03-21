@@ -49,17 +49,19 @@ export default function PostDetailPage() {
     );
   }
 
+  const postData = post;
+
   async function handleLike() {
     if (!isAuthenticated) {
       login();
       return;
     }
 
-    if (liked || post.has_liked) {
-      await social.unlikePost(BigInt(post.post_id));
+    if (liked || postData.has_liked) {
+      await social.unlikePost(BigInt(postData.post_id));
       setLiked(false);
     } else {
-      await social.likePost(BigInt(post.post_id));
+      await social.likePost(BigInt(postData.post_id));
       setLiked(true);
     }
 
@@ -72,21 +74,21 @@ export default function PostDetailPage() {
       return;
     }
 
-    if (!post.collection) return;
-    if (post.token_type === "ERC1155") {
+    if (!postData.collection) return;
+    if (postData.token_type === "ERC1155") {
       await mint.mintEdition(
         {
-          address: post.nft_contract as `0x${string}`,
-          minter_type: post.collection.minter_type,
+          address: postData.nft_contract as `0x${string}`,
+          minter_type: postData.collection.minter_type,
         },
-        BigInt(post.edition_token_id ?? 1),
+        BigInt(postData.edition_token_id ?? 1),
         BigInt(quantity),
       );
     } else {
       await mint.mintNFT(
         {
-          address: post.nft_contract as `0x${string}`,
-          minter_type: post.collection.minter_type,
+          address: postData.nft_contract as `0x${string}`,
+          minter_type: postData.collection.minter_type,
         },
         BigInt(quantity),
       );
@@ -100,7 +102,7 @@ export default function PostDetailPage() {
     }
 
     if (!comment.trim()) return;
-    await social.addComment(BigInt(post.post_id), comment);
+    await social.addComment(BigInt(postData.post_id), comment);
     setComment("");
     await commentsQuery.refetch();
   }
@@ -118,12 +120,12 @@ export default function PostDetailPage() {
           </div>
           <div className="mt-4 flex items-center gap-4">
             <button onClick={() => void handleLike()} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <Heart className={`h-5 w-5 ${(liked || post.has_liked) ? "fill-destructive text-destructive" : ""}`} />
-              {post.like_count_value + (liked && !post.has_liked ? 1 : 0)}
+              <Heart className={`h-5 w-5 ${(liked || postData.has_liked) ? "fill-destructive text-destructive" : ""}`} />
+              {postData.like_count_value + (liked && !postData.has_liked ? 1 : 0)}
             </button>
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
               <MessageCircle className="h-5 w-5" />
-              {post.comment_count_value}
+              {postData.comment_count_value}
             </button>
             <button className="text-muted-foreground hover:text-foreground">
               <Share2 className="h-5 w-5" />
@@ -134,30 +136,30 @@ export default function PostDetailPage() {
         <div className="lg:w-[45%]">
           <div className="space-y-6 lg:sticky lg:top-[76px]">
             <div className="flex items-center justify-between">
-              <Link href={`/profile/${post.creator}`} className="flex items-center gap-3">
+              <Link href={`/profile/${postData.creator}`} className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-400" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {post.profile?.username ?? "Unknown"}
+                    {postData.profile?.username ?? "Unknown"}
                   </p>
-                  <AddressChip address={post.creator} />
+                  <AddressChip address={postData.creator} />
                 </div>
               </Link>
-              <FollowButton targetAddress={post.creator} />
+              <FollowButton targetAddress={postData.creator} />
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">{post.title}</h1>
-              {post.description ? (
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{post.description}</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{postData.title}</h1>
+              {postData.description ? (
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{postData.description}</p>
               ) : null}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               {[
-                ["PRICE", post.collection?.mint_price === "0" ? "FREE" : formatINJ(post.collection?.mint_price)],
-                ["MINTED", String(post.collection?.total_minted ?? 0)],
-                ["MAX", String(post.collection?.max_supply ?? "∞")],
+                ["PRICE", postData.collection?.mint_price === "0" ? "FREE" : formatINJ(postData.collection?.mint_price)],
+                ["MINTED", String(postData.collection?.total_minted ?? 0)],
+                ["MAX", String(postData.collection?.max_supply ?? "∞")],
               ].map(([label, value]) => (
                 <div key={label} className="card-surface p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -218,8 +220,8 @@ export default function PostDetailPage() {
 
             <div className="space-y-3 text-sm">
               {[
-                { label: "Contract", value: <AddressChip address={post.nft_contract} /> },
-                { label: "Token Standard", value: post.token_type },
+                { label: "Contract", value: <AddressChip address={postData.nft_contract} /> },
+                { label: "Token Standard", value: postData.token_type },
                 { label: "Chain", value: "Injective inEVM" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between border-b border-border-subtle py-2">
