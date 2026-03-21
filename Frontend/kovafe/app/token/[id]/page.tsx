@@ -1,11 +1,7 @@
-import { TokenDetail } from "@/features/token/TokenDetail";
+import { useParams } from "react-router-dom";
+import PostDetailPage from "./PostDetail";
 
-type TokenRouteProps = {
-  params: Promise<{ id: string }>;
-};
-
-export default async function TokenRoute({ params }: TokenRouteProps) {
-  const { id } = await params;
-
-  return <TokenDetail id={id} />;
+// Token detail reuses post detail layout with secondary market focus
+export default function TokenDetailPage() {
+  return <PostDetailPage />;
 }
