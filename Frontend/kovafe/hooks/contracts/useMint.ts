@@ -53,7 +53,7 @@ export function useMint() {
       minterAddress: `0x${string}`,
       collection: `0x${string}`,
       qty: bigint,
-      abi: any = FIXED_PRICE_MINTER_ABI,
+      abi: readonly unknown[] = FIXED_PRICE_MINTER_ABI,
     ) => {
       if (!publicClient) {
         throw new Error("Missing public client");

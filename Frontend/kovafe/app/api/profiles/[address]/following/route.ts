@@ -1,8 +1,11 @@
 import { type NextRequest } from "next/server";
 import { normalizeAddress } from "@/lib/format";
+import type { Database } from "@/lib/database.types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { fetchProfiles, nextCursor } from "@/lib/server/queries";
+
+type FollowRow = Database["public"]["Tables"]["follows"]["Row"];
 
 type Context = {
   params: Promise<{ address: string }>;
@@ -25,10 +28,14 @@ export async function GET(request: NextRequest, context: Context) {
 
     if (error) throw error;
 
-    const profiles = await fetchProfiles((data ?? []).map((item: any) => item.following));
-    const profileMap = new Map(profiles.map((profile: any) => [profile.wallet, profile]));
+    const profiles = await fetchProfiles(
+      (data ?? []).map((item: FollowRow) => item.following),
+    );
+    const profileMap = new Map(
+      profiles.map((profile) => [profile.wallet, profile]),
+    );
 
-    const following = (data ?? []).map((follow: any) => ({
+    const following = (data ?? []).map((follow: FollowRow) => ({
       ...follow,
       profile: profileMap.get(follow.following) ?? null,
     }));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/data/useProfile";
@@ -12,17 +12,15 @@ export default function SettingsPage() {
   const { address, logout } = useAuth();
   const profile = useProfile(address);
   const social = useSocial();
-  const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [website, setWebsite] = useState("");
+  const [draft, setDraft] = useState<{
+    username?: string;
+    bio?: string;
+    website?: string;
+  }>({});
 
-  useEffect(() => {
-    if (profile.data) {
-      setUsername(profile.data.username);
-      setBio(profile.data.bio ?? "");
-      setWebsite(profile.data.website_url ?? "");
-    }
-  }, [profile.data]);
+  const username = draft.username ?? profile.data?.username ?? "";
+  const bio = draft.bio ?? profile.data?.bio ?? "";
+  const website = draft.website ?? profile.data?.website_url ?? "";
 
   return (
     <RequireAuth requireProfile>
@@ -33,15 +31,15 @@ export default function SettingsPage() {
           <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Profile</h2>
           <div>
             <label className="mb-1.5 block text-xs text-muted-foreground">Username</label>
-            <input value={username} onChange={(event) => setUsername(event.target.value)} className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
+            <input value={username} onChange={(event) => setDraft((current) => ({ ...current, username: event.target.value }))} className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-muted-foreground">Bio</label>
-            <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={3} className="w-full resize-none rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
+            <textarea value={bio} onChange={(event) => setDraft((current) => ({ ...current, bio: event.target.value }))} rows={3} className="w-full resize-none rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-muted-foreground">Website</label>
-            <input value={website} onChange={(event) => setWebsite(event.target.value)} className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
+            <input value={website} onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))} className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-foreground outline-none" />
           </div>
           <button onClick={() => void social.updateProfile(username, bio, website)} className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
             Save Changes

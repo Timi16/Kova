@@ -32,14 +32,22 @@ export const useStore = create<AppState>((set) => ({
   toggleFollow: (id) =>
     set((s) => {
       const next = new Set(s.followedCreators);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return { followedCreators: next };
     }),
   likedPosts: new Set<string>(),
   toggleLike: (id) =>
     set((s) => {
       const next = new Set(s.likedPosts);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return { likedPosts: next };
     }),
 }));

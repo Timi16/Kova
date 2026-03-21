@@ -3,6 +3,9 @@ import { normalizeAddress } from "@/lib/format";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json, parseCursor, parseLimit } from "@/lib/server/api";
 import { hydratePosts, nextCursor } from "@/lib/server/queries";
+import type { Database } from "@/lib/database.types";
+
+type FollowRow = Database["public"]["Tables"]["follows"]["Row"];
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +25,9 @@ export async function GET(request: NextRequest) {
 
     if (followError) throw followError;
 
-    const following = (follows ?? []).map((item: any) => item.following);
+    const following = (follows ?? []).map(
+      (item: FollowRow) => item.following,
+    );
     if (!following.length) {
       return json({ posts: [], nextCursor: null });
     }

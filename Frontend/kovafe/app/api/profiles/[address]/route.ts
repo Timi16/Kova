@@ -1,7 +1,10 @@
 import { normalizeAddress } from "@/lib/format";
+import type { Database } from "@/lib/database.types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { errorResponse, json } from "@/lib/server/api";
 import { sumPricePaid } from "@/lib/server/queries";
+
+type CollectionRow = Database["public"]["Tables"]["collections"]["Row"];
 
 type Context = {
   params: Promise<{ address: string }>;
@@ -51,7 +54,7 @@ export async function GET(_: Request, context: Context) {
     if (collectionsResponse.error) throw collectionsResponse.error;
 
     const collectionAddresses = (collectionsResponse.data ?? []).map(
-      (collection: any) => collection.address,
+      (collection: CollectionRow) => collection.address,
     );
 
     const mintsResponse = collectionAddresses.length
